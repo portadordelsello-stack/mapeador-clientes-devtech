@@ -202,41 +202,86 @@ import * as fb from './firebase-service.js';
   // MOTOR GOOGLE MAPS PLATFORM (ÚNICO MOTOR DEL SISTEMA)
   // ==========================================
   function loadGoogleMapsSDK(apiKey) {
+    if (window.google && window.google.maps && (typeof window.google.maps.importLibrary === 'function' || window.google.maps.Map)) {
+      return Promise.resolve(window.google.maps);
+    }
+
+    // Handler para fallos de autorización o claves inválidas
+    window.gm_authFailure = () => {
+      console.error("Google Maps authentication failure.");
+      renderGoogleMapsAuthError();
+    };
+
     return new Promise((resolve, reject) => {
-      if (window.google && window.google.maps && window.google.maps.importLibrary) {
-        return resolve(window.google.maps);
+      // Inline dynamic bootstrap oficial de Google Maps Platform
+      (g => {
+        var h, a, k, p = "The Google Maps JavaScript API", c = "google", l = "importLibrary", q = "__ib__", m = document, b = window;
+        b[c] = b[c] || {};
+        var d = b[c].maps = b[c].maps || {}, r = new Set, e = new URLSearchParams, u = () => h || (h = new Promise(async (f, n) => {
+          await (a = m.createElement("script"));
+          a.id = "google-maps-js-sdk";
+          e.set("libraries", [...r] + "");
+          for (k in g) e.set(k.replace(/[A-Z]/g, t => "_" + t[0].toLowerCase()), g[k]);
+          e.set("callback", c + ".maps." + q);
+          a.src = `https://maps.${c}apis.com/maps/api/js?` + e;
+          d[q] = () => { f(); resolve(window.google.maps); };
+          a.onerror = () => {
+            const err = Error(p + " could not load.");
+            n(err);
+            reject(err);
+          };
+          a.nonce = m.querySelector("script[nonce]")?.nonce || "";
+          m.head.append(a);
+        }));
+        d[l] ? d[l] : (d[l] = (f, ...n) => r.add(f) && u().then(() => d[l](f, ...n)));
+      })({
+        key: apiKey,
+        v: "weekly",
+        libraries: "places,marker"
+      });
+
+      // Solicitar biblioteca "maps" para disparar carga inmediata
+      if (window.google && window.google.maps && typeof window.google.maps.importLibrary === 'function') {
+        window.google.maps.importLibrary("maps").then(() => resolve(window.google.maps)).catch(reject);
+      } else {
+        // Fallback de seguridad: si no resuelve en 500ms, chequear si google.maps ya cargó
+        setTimeout(() => {
+          if (window.google && window.google.maps) {
+            resolve(window.google.maps);
+          }
+        }, 500);
       }
-
-      // Handler para fallos de autorización o claves inválidas
-      window.gm_authFailure = () => {
-        console.error("Google Maps authentication failure.");
-        renderGoogleMapsAuthError();
-      };
-
-      const prevScript = document.getElementById('google-maps-js-sdk');
-      if (prevScript) prevScript.remove();
-
-      const script = document.createElement('script');
-      script.id = 'google-maps-js-sdk';
-      // Carga asíncrona moderna con Places API y Advanced Markers
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=weekly&libraries=places,marker&loading=async`;
-      script.async = true;
-      script.defer = true;
-
-      script.onload = () => {
-        if (window.google && window.google.maps) {
-          resolve(window.google.maps);
-        } else {
-          reject(new Error("Google Maps JS API no disponible tras la descarga del script."));
-        }
-      };
-
-      script.onerror = () => {
-        reject(new Error("Error de red al cargar Google Maps. Verifica tu conexión o bloqueadores."));
-      };
-
-      document.head.appendChild(script);
     });
+  }
+
+  // Acceso seguro y resiliente a las bibliotecas de Google Maps (importLibrary o namespace global)
+  async function getGoogleMapsLibrary(name) {
+    if (window.google && window.google.maps) {
+      if (typeof window.google.maps.importLibrary === 'function') {
+        try {
+          return await window.google.maps.importLibrary(name);
+        } catch (e) {
+          console.warn(`importLibrary("${name}") warning, usando namespace directo:`, e);
+        }
+      }
+      // Fallback a objetos globales si importLibrary no está disponible en este bundle
+      if (name === 'maps') {
+        return { Map: window.google.maps.Map, LatLng: window.google.maps.LatLng };
+      }
+      if (name === 'marker') {
+        return {
+          AdvancedMarkerElement: window.google.maps.marker?.AdvancedMarkerElement || window.google.maps.Marker,
+          PinElement: window.google.maps.marker?.PinElement
+        };
+      }
+      if (name === 'places') {
+        return {
+          Place: window.google.maps.places?.Place,
+          PlacesService: window.google.maps.places?.PlacesService
+        };
+      }
+    }
+    throw new Error(`Biblioteca Google Maps "${name}" no disponible.`);
   }
 
   async function initGoogleMapsApp(apiKey) {
@@ -254,7 +299,7 @@ import * as fb from './firebase-service.js';
 
     try {
       await loadGoogleMapsSDK(apiKey);
-      const { Map } = await google.maps.importLibrary("maps");
+      const { Map } = await getGoogleMapsLibrary("maps");
       const config = window.getStoredConfig();
 
       mapContainer.innerHTML = '';
@@ -403,7 +448,7 @@ import * as fb from './firebase-service.js';
     const filtered = getFilteredPlaces();
 
     try {
-      const { AdvancedMarkerElement, PinElement } = await google.maps.importLibrary("marker");
+      const { AdvancedMarkerElement, PinElement } = await getGoogleMapsLibrary("marker");
 
       filtered.forEach(place => {
         const color = CATEGORY_COLORS[place.categoryType] || CATEGORY_COLORS.general;
@@ -562,7 +607,7 @@ import * as fb from './firebase-service.js';
   async function executeGooglePlacesSearch(query) {
     try {
       const center = googleMapInstance.getCenter();
-      const { Place } = await google.maps.importLibrary("places");
+      const { Place } = await getGoogleMapsLibrary("places");
 
       const request = {
         textQuery: `${query} Santa Fe Argentina`,
@@ -1304,7 +1349,7 @@ import * as fb from './firebase-service.js';
           googleMapInstance.setZoom(16);
 
           try {
-            const { AdvancedMarkerElement, PinElement } = await google.maps.importLibrary("marker");
+            const { AdvancedMarkerElement, PinElement } = await getGoogleMapsLibrary("marker");
             if (!userLocationMarker) {
               const userPin = new PinElement({
                 background: '#2563eb',
