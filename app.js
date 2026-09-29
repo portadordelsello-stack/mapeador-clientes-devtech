@@ -159,19 +159,9 @@ import * as fb from './firebase-service.js';
 
   function updateSyncBadge(isConnected, label, isSyncing = false) {
     const badge = document.getElementById('cloud-sync-badge');
-    const labelEl = document.getElementById('cloud-sync-label');
-    if (!badge || !labelEl) return;
-
-    labelEl.innerText = label;
-    if (isSyncing) {
-      badge.className = "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200";
-      badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span><span>${label}</span>`;
-    } else if (isConnected) {
-      badge.className = "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200";
-      badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span><span>${label}</span>`;
-    } else {
-      badge.className = "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200";
-      badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span><span>${label}</span>`;
+    if (badge) {
+      badge.className = "hidden";
+      badge.style.display = "none";
     }
   }
 
@@ -447,12 +437,8 @@ import * as fb from './firebase-service.js';
 
       const badge = document.getElementById('engine-badge');
       if (badge) {
-        badge.innerHTML = `
-          <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800">
-            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            Google Maps & Places (New)
-          </span>
-        `;
+        badge.className = "hidden";
+        badge.style.display = "none";
       }
     } catch (err) {
       console.error("Error al inicializar Google Maps:", err);
