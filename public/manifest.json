@@ -1,0 +1,18 @@
+{
+  "name": "GeoProspector - Santa Fe",
+  "short_name": "GeoProspector",
+  "description": "App de prospección comercial en terreno para servicios digitales y Google Business",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

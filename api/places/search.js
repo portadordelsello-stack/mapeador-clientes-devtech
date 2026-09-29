@@ -1,19 +1,5 @@
-const express = require('express');
-const path = require('path');
-
-const app = express();
-const PORT = process.env.PORT || 3000;
-const HOST = '0.0.0.0';
-
-app.use(express.json());
-// Serve static assets from root directory and public directory
-app.use(express.static(__dirname));
-app.use(express.static(path.join(__dirname, 'public')));
-
-// ==========================================
-// API DE BÚSQUEDA DE LOCALES (CAPACIDAD GOOGLE PLACES / OSM LIVE)
-// ==========================================
-app.get('/api/places/search', async (req, res) => {
+// Vercel Serverless Function: /api/places/search
+module.exports = async (req, res) => {
   const query = (req.query.q || '').trim();
   const customKey = req.headers['x-google-api-key'] || process.env.GOOGLE_MAPS_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY;
 
@@ -24,7 +10,7 @@ app.get('/api/places/search', async (req, res) => {
   const results = [];
   const seenNames = new Set();
 
-  // 1. Si hay Google Maps API Key disponible, intentar Google Places API New
+  // 1. Google Places API New
   if (customKey && customKey.trim().length > 10) {
     try {
       const gplacesUrl = 'https://places.googleapis.com/v1/places:searchText';
@@ -81,7 +67,7 @@ app.get('/api/places/search', async (req, res) => {
                   hasWebsite: !!(gp.websiteURI && gp.websiteURI.length > 3),
                   lowReviews: (gp.userRatingCount || 0) < 20,
                   unclaimedProfile: false,
-                  hook: `Tiene ${gp.userRatingCount || 0} reseñas en Google con ${gp.rating || 'sin'} estrellas. Gran potencial de prospección comercial en Santa Fe.`
+                  hook: `Tiene ${gp.userRatingCount || 0} reseñas en Google con ${gp.rating || 'sin'} estrellas en Santa Fe.`
                 }
               });
             }
@@ -89,11 +75,11 @@ app.get('/api/places/search', async (req, res) => {
         }
       }
     } catch (gErr) {
-      console.warn('Google Places API search failed, falling back to OSM:', gErr.message);
+      console.warn('Google Places API search failed:', gErr.message);
     }
   }
 
-  // 2. Si no hay Google API Key o no devolvió resultados suficientes, consultar OpenStreetMap Nominatim
+  // 2. OpenStreetMap Nominatim fallback
   if (results.length < 5) {
     try {
       const osmQuery = `${query} Santa Fe Argentina`;
@@ -122,7 +108,6 @@ app.get('/api/places/search', async (req, res) => {
               const lat = parseFloat(item.lat);
               const lng = parseFloat(item.lon);
 
-              // Filtrar para mantener resultados en el Gran Santa Fe / alrededores
               if (!isNaN(lat) && !isNaN(lng) && lat >= -33.2 && lat <= -31.4 && lng >= -61.0 && lng <= -60.4) {
                 const catType = determineCategoryType(query, [item.type, item.class], name);
                 const catName = getCategoryDisplayName(catType, name);
@@ -155,7 +140,7 @@ app.get('/api/places/search', async (req, res) => {
                     hasWebsite: !!(website && website.length > 3),
                     lowReviews: reviewCount < 20,
                     unclaimedProfile: false,
-                    hook: `Local comercial en ${city} con ${reviewCount} reseñas estimadas. ${website ? 'Posee presencia web.' : 'SIN SITIO WEB: Excelente oportunidad para ofrecer servicios digitales.'}`
+                    hook: `Local en ${city} con ${reviewCount} reseñas estimadas.`
                   }
                 });
               }
@@ -164,97 +149,7 @@ app.get('/api/places/search', async (req, res) => {
         }
       }
     } catch (osmErr) {
-      console.warn('OSM Nominatim search error:', osmErr.message);
-    }
-  }
-
-  // 3. Si aún hay pocos resultados para rubros específicos (como telas o supermercados), consultar Overpass OSM
-  if (results.length < 5) {
-    try {
-      const qLower = query.toLowerCase();
-      let osmTagFilter = '';
-      if (qLower.includes('tela') || qLower.includes('mercer') || qLower.includes('textil')) {
-        osmTagFilter = 'node["shop"~"fabric|curtain|sewing|tailor|clothes"](-31.69,-60.75,-31.57,-60.67);way["shop"~"fabric|curtain|sewing|tailor|clothes"](-31.69,-60.75,-31.57,-60.67);';
-      } else if (qLower.includes('super') || qLower.includes('mercado') || qLower.includes('almacen')) {
-        osmTagFilter = 'node["shop"~"supermarket|convenience|grocery"](-31.69,-60.75,-31.57,-60.67);way["shop"~"supermarket|convenience|grocery"](-31.69,-60.75,-31.57,-60.67);';
-      } else if (qLower.includes('mecanic') || qLower.includes('taller') || qLower.includes('auto')) {
-        osmTagFilter = 'node["shop"~"car_repair|car_parts"](-31.69,-60.75,-31.57,-60.67);way["shop"~"car_repair|car_parts"](-31.69,-60.75,-31.57,-60.67);';
-      } else if (qLower.includes('ferret')) {
-        osmTagFilter = 'node["shop"~"hardware|doityourself"](-31.69,-60.75,-31.57,-60.67);way["shop"~"hardware|doityourself"](-31.69,-60.75,-31.57,-60.67);';
-      }
-
-      if (osmTagFilter) {
-        const overpassQuery = `[out:json][timeout:8];(${osmTagFilter});out center 15;`;
-        const overpassRes = await fetch('https://overpass-api.de/api/interpreter', {
-          method: 'POST',
-          headers: {
-            'User-Agent': 'GeoProspector-SantaFe/2.0 (CRM Comercial)',
-            'Content-Type': 'application/x-www-form-urlencoded'
-          },
-          body: `data=${encodeURIComponent(overpassQuery)}`
-        });
-
-        if (overpassRes.ok) {
-          const overpassData = await overpassRes.json();
-          if (overpassData.elements && Array.isArray(overpassData.elements)) {
-            for (const el of overpassData.elements) {
-              const tags = el.tags || {};
-              const name = tags.name || tags['addr:housename'] || 'Comercio';
-              const normKey = name.toLowerCase().replace(/[^a-z0-9]/g, '');
-
-              if (!seenNames.has(normKey) && name !== 'Comercio') {
-                seenNames.add(normKey);
-                const street = tags['addr:street'] || tags['addr:full'] || 'Santa Fe';
-                const number = tags['addr:housenumber'] || '';
-                const city = tags['addr:city'] || 'Santa Fe';
-                const formattedAddress = `${street} ${number}, ${city}`.trim();
-
-                const lat = el.lat || el.center?.lat;
-                const lng = el.lon || el.center?.lon;
-
-                if (lat && lng) {
-                  const catType = determineCategoryType(query, [tags.shop || ''], name);
-                  const catName = getCategoryDisplayName(catType, name);
-                  const website = tags.website || tags['contact:website'] || '';
-                  const phone = tags.phone || tags['contact:phone'] || '';
-
-                  const rating = Number((4.2 + Math.random() * 0.7).toFixed(1));
-                  const reviewCount = Math.floor(5 + Math.random() * 25);
-
-                  results.push({
-                    id: `overpass_${el.type}_${el.id}`,
-                    name: name,
-                    category: catName,
-                    categoryType: catType,
-                    address: formattedAddress,
-                    phone: phone,
-                    website: website,
-                    rating: rating,
-                    reviewCount: reviewCount,
-                    openStatus: 'Consultar horarios',
-                    lat: lat,
-                    lng: lng,
-                    photos: [getCategoryDefaultPhoto(catType)],
-                    googleMapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name + ' ' + formattedAddress)}`,
-                    visitStatus: 'pending',
-                    contactName: '',
-                    contactPhone: '',
-                    notes: '',
-                    auditSummary: {
-                      hasWebsite: !!(website && website.length > 3),
-                      lowReviews: reviewCount < 20,
-                      unclaimedProfile: false,
-                      hook: `Negocio de ${catName} en Santa Fe. ${website ? 'Cuenta con sitio web.' : 'SIN SITIO WEB: Oportunidad de prospección comercial.'}`
-                    }
-                  });
-                }
-              }
-            }
-          }
-        }
-      }
-    } catch (opErr) {
-      console.warn('Overpass search error:', opErr.message);
+      console.warn('OSM search error:', osmErr.message);
     }
   }
 
@@ -264,7 +159,7 @@ app.get('/api/places/search', async (req, res) => {
     count: results.length,
     places: results
   });
-});
+};
 
 function determineCategoryType(query, types, name) {
   const q = (query || '').toLowerCase();
@@ -334,14 +229,3 @@ function getCategoryDefaultPhoto(catType) {
       return 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=600&auto=format&fit=crop&q=80';
   }
 }
-
-// Fallback to index.html
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-app.listen(PORT, HOST, () => {
-  console.log(`====================================================`);
-  console.log(`🚀 GeoProspector server running at http://${HOST}:${PORT}`);
-  console.log(`====================================================`);
-});

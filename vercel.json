@@ -1,17 +1,18 @@
 {
   "version": 2,
+  "outputDirectory": "public",
   "cleanUrls": true,
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
         { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
         { "key": "X-XSS-Protection", "value": "1; mode=block" }
       ]
     },
     {
-      "source": "/(data.js|app.js|manifest.json|icon.svg)",
+      "source": "/(data.js|app.js|manifest.json|icon.svg|firebase-service.js|firebase-applet-config.json)",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=3600, must-revalidate" }
       ]
