@@ -82,21 +82,13 @@
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
         </div>
         <div class="truncate">
-          <div class="flex items-center gap-1.5">
-            <h1 class="text-xs md:text-sm font-bold text-slate-900 leading-tight truncate">GeoProspector</h1>
-            <span id="cloud-sync-badge" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200" title="Almacenamiento Firebase Firestore Activo">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span id="cloud-sync-label">Firebase</span>
-            </span>
-          </div>
-          <div class="flex items-center gap-1 text-[10px] text-slate-500" id="engine-badge">
-            <span class="inline-block w-1.5 h-1.5 rounded-full bg-blue-600"></span>
-            <span>Santa Fe, Arg</span>
-          </div>
+          <h1 class="text-sm md:text-base font-bold text-slate-900 leading-tight truncate">GeoProspector</h1>
+          <span id="cloud-sync-badge" class="hidden"><span id="cloud-sync-label"></span></span>
+          <span id="engine-badge" class="hidden"></span>
         </div>
       </div>
 
-      <!-- Acciones de Cabecera (Desktop & Tablet) -->
+      <!-- Acciones de Cabecera (Desktop & Mobile) -->
       <div class="flex items-center gap-1.5">
         <!-- Botón Mis Listas (Desktop) -->
         <button onclick="window.openSavedSearchesModal()" id="btn-saved-searches" title="Mis listas y búsquedas guardadas" class="hidden md:flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-700 shadow-2xs hover:border-amber-400 transition-colors">
@@ -120,9 +112,8 @@
       </div>
     </div>
 
-    <!-- Barra de Búsqueda y Chips de Categoría -->
+    <!-- Barra de Búsqueda -->
     <div class="px-3 pb-2 pt-0.5 space-y-2">
-      <!-- Buscador de Texto / Google Places -->
       <div class="relative flex items-center gap-1.5">
         <div class="relative flex-1 flex items-center">
           <input type="text" id="search-query-input" placeholder="Buscar rubro (ej: taller mecanico, ferreterías, dentistas)..." 
@@ -137,34 +128,6 @@
         <!-- Botón Guardar Lista Compacto -->
         <button onclick="window.promptSaveCurrentSearch()" id="btn-save-current-search" title="Guardar esta búsqueda como lista rápida" class="w-9 h-9 flex items-center justify-center text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 rounded-xl shadow-2xs active:bg-amber-300 flex-shrink-0 transition-colors">
           <svg class="w-4 h-4 text-amber-600" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-        </button>
-      </div>
-
-      <!-- Filtros Rápidos (Chips) -->
-      <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
-        <button data-category="all" class="filter-chip px-3 py-1.5 text-xs font-bold rounded-full bg-blue-600 text-white border border-blue-600 whitespace-nowrap shadow-xs">
-          Todos
-        </button>
-        <button data-category="supermarket" class="filter-chip px-3 py-1.5 text-xs font-semibold rounded-full bg-white text-slate-700 border border-slate-200 whitespace-nowrap shadow-2xs active:bg-slate-50">
-          🛒 Supermercados
-        </button>
-        <button data-category="textile" class="filter-chip px-3 py-1.5 text-xs font-semibold rounded-full bg-white text-slate-700 border border-slate-200 whitespace-nowrap shadow-2xs active:bg-slate-50">
-          🧵 Telas & Mercerías
-        </button>
-        <button data-category="mechanical" class="filter-chip px-3 py-1.5 text-xs font-semibold rounded-full bg-white text-slate-700 border border-slate-200 whitespace-nowrap shadow-2xs active:bg-slate-50">
-          🚗 Talleres Mecánicos
-        </button>
-        <button data-category="dental" class="filter-chip px-3 py-1.5 text-xs font-semibold rounded-full bg-white text-slate-700 border border-slate-200 whitespace-nowrap shadow-2xs active:bg-slate-50">
-          🦷 Odontología
-        </button>
-        <button data-category="medical" class="filter-chip px-3 py-1.5 text-xs font-semibold rounded-full bg-white text-slate-700 border border-slate-200 whitespace-nowrap shadow-2xs active:bg-slate-50">
-          🏥 Médicos & Sanatorios
-        </button>
-        <button data-category="aesthetic" class="filter-chip px-3 py-1.5 text-xs font-semibold rounded-full bg-white text-slate-700 border border-slate-200 whitespace-nowrap shadow-2xs active:bg-slate-50">
-          ✨ Estética & Belleza
-        </button>
-        <button data-category="hardware" class="filter-chip px-3 py-1.5 text-xs font-semibold rounded-full bg-white text-slate-700 border border-slate-200 whitespace-nowrap shadow-2xs active:bg-slate-50">
-          🔨 Ferreterías
         </button>
       </div>
 
