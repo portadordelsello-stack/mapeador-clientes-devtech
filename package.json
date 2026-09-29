@@ -1,0 +1,15 @@
+{
+  "name": "geoprospector-santa-fe",
+  "version": "1.0.0",
+  "description": "Prospección comercial y CRM de campo con visualización en mapas y auditoría para locales en Santa Fe, Argentina.",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
+    "build": "echo 'No build step required for static assets'"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

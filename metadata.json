@@ -1,0 +1,8 @@
+{
+  "name": "GeoProspector Santa Fe",
+  "description": "Prospección comercial y CRM de campo con visualización en mapas y auditoría para locales en Santa Fe, Argentina.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

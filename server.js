@@ -1,48 +1,20 @@
-const http = require('http');
-const fs = require('fs');
+const express = require('express');
 const path = require('path');
 
-const PORT = 3000;
-const MIME_TYPES = {
-  '.html': 'text/html; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json; charset=utf-8',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.svg': 'image/svg+xml',
-  '.ico': 'image/x-icon'
-};
+const app = express();
+const PORT = process.env.PORT || 3000;
+const HOST = '0.0.0.0';
 
-const server = http.createServer((req, res) => {
-  let reqPath = req.url.split('?')[0];
-  if (reqPath === '/' || reqPath === '') reqPath = '/index.html';
-  
-  const filePath = path.join(__dirname, reqPath);
+// Serve static assets from root directory
+app.use(express.static(__dirname));
 
-  fs.stat(filePath, (err, stats) => {
-    if (err || !stats.isFile()) {
-      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
-      res.end('404 Not Found');
-      return;
-    }
-
-    const ext = path.extname(filePath).toLowerCase();
-    const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-
-    res.writeHead(200, {
-      'Content-Type': contentType,
-      'Access-Control-Allow-Origin': '*'
-    });
-
-    const readStream = fs.createReadStream(filePath);
-    readStream.pipe(res);
-  });
+// Fallback to index.html
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-server.listen(PORT, () => {
+app.listen(PORT, HOST, () => {
   console.log(`====================================================`);
-  console.log(`🚀 GeoProspector AI corriendo con éxito!`);
-  console.log(`📍 Accede en tu navegador a: http://localhost:${PORT}`);
+  console.log(`🚀 GeoProspector server running at http://${HOST}:${PORT}`);
   console.log(`====================================================`);
 });
