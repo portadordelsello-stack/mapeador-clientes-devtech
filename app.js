@@ -321,6 +321,12 @@ import * as fb from './firebase-service.js';
         window.closePlaceDrawer();
       });
 
+      // Mostrar botón flotante 'Buscar en esta zona' al arrastrar el mapa
+      googleMapInstance.addListener('dragend', () => {
+        const btnContainer = document.getElementById('btn-search-this-area-container');
+        if (btnContainer) btnContainer.classList.remove('hidden');
+      });
+
       await renderGoogleMarkers();
 
       const badge = document.getElementById('engine-badge');
@@ -602,6 +608,16 @@ import * as fb from './firebase-service.js';
 
   // Alias para compatibilidad total
   window.searchGooglePlacesInZone = window.searchPlacesQuery;
+
+  // Búsqueda en el área actualmente visible del mapa (Botón flotante)
+  window.searchPlacesInCurrentMapBounds = async function() {
+    const btnContainer = document.getElementById('btn-search-this-area-container');
+    if (btnContainer) btnContainer.classList.add('hidden');
+
+    const queryInput = document.getElementById('search-query-input');
+    const query = (queryInput && queryInput.value.trim()) || activeSearchQuery || 'comercios';
+    await window.searchPlacesQuery(query);
+  };
 
   // Búsqueda moderna usando google.maps.places.Place.searchByText (Places API New)
   async function executeGooglePlacesSearch(query) {
@@ -1116,19 +1132,29 @@ import * as fb from './firebase-service.js';
     openPlaceDrawer(place);
   };
 
+  // ==========================================
+  // ESTADO DEL DRAWER MOBILE-FIRST (PEEK / EXPANDIDO)
+  // ==========================================
+  let drawerMode = 'closed'; // 'closed', 'peek', 'expanded'
+
   function openPlaceDrawer(place) {
     selectedPlace = place;
     const drawer = document.getElementById('place-drawer');
+    const backdrop = document.getElementById('place-drawer-backdrop');
+    const isMobile = window.innerWidth < 768;
+
     if (drawer) {
       drawer.style.transform = '';
       drawer.classList.remove('translate-y-full', 'pointer-events-none', 'opacity-0');
       drawer.classList.add('translate-y-0', 'opacity-100');
-    }
 
-    const backdrop = document.getElementById('place-drawer-backdrop');
-    if (backdrop) {
-      backdrop.classList.remove('hidden', 'pointer-events-none', 'opacity-0');
-      backdrop.classList.add('opacity-100');
+      if (isMobile) {
+        // En celular, abrir primero en modo Peek (~200px) para no tapar el mapa
+        collapseDrawerToPeek();
+      } else {
+        // En desktop, abrir completo
+        expandDrawer();
+      }
     }
 
     document.getElementById('drawer-title').innerText = place.name;
@@ -1154,7 +1180,7 @@ import * as fb from './firebase-service.js';
     if (place.website && place.website.trim().length > 3) {
       btnWeb.href = place.website;
       btnWeb.classList.remove('opacity-40', 'pointer-events-none');
-      btnWeb.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg> Sitio web`;
+      btnWeb.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg> Web`;
     } else {
       btnWeb.href = "#";
       btnWeb.classList.add('opacity-40', 'pointer-events-none');
@@ -1186,11 +1212,99 @@ import * as fb from './firebase-service.js';
 
     renderOpportunityAudit(place);
 
-    document.getElementById('visit-status-select').value = place.visitStatus || 'pending';
+    // Seleccionar la píldora de estado activa
+    window.setVisitStatus(place.visitStatus || 'pending');
+
     document.getElementById('visit-contact-name').value = place.contactName || '';
     document.getElementById('visit-contact-phone').value = place.contactPhone || '';
     document.getElementById('visit-notes').value = place.notes || '';
   }
+
+  // Alternar entre modo Peek y Expandido al tocar la cabecera
+  window.handleDrawerHeaderClick = function() {
+    if (window.innerWidth >= 768) return;
+    if (drawerMode === 'peek') {
+      expandDrawer();
+    } else if (drawerMode === 'expanded') {
+      collapseDrawerToPeek();
+    }
+  };
+
+  function expandDrawer() {
+    const drawer = document.getElementById('place-drawer');
+    const backdrop = document.getElementById('place-drawer-backdrop');
+    const hint = document.getElementById('drawer-expand-hint');
+
+    drawerMode = 'expanded';
+    if (drawer) {
+      drawer.style.maxHeight = '85vh';
+      drawer.style.height = 'auto';
+    }
+    if (backdrop && window.innerWidth < 768) {
+      backdrop.classList.remove('hidden', 'pointer-events-none', 'opacity-0');
+      backdrop.classList.add('opacity-100');
+    }
+    if (hint) hint.innerText = "Desliza abajo para minimizar";
+  }
+
+  function collapseDrawerToPeek() {
+    const drawer = document.getElementById('place-drawer');
+    const backdrop = document.getElementById('place-drawer-backdrop');
+    const hint = document.getElementById('drawer-expand-hint');
+    const scrollBody = document.getElementById('drawer-scroll-body');
+
+    drawerMode = 'peek';
+    if (drawer) {
+      drawer.style.maxHeight = '205px';
+    }
+    if (backdrop) {
+      backdrop.classList.remove('opacity-100');
+      backdrop.classList.add('opacity-0', 'pointer-events-none');
+      setTimeout(() => {
+        if (drawerMode === 'peek' && backdrop) backdrop.classList.add('hidden');
+      }, 250);
+    }
+    if (hint) hint.innerText = "Toca para ver notas y CRM";
+    if (scrollBody) scrollBody.scrollTop = 0;
+  }
+
+  // Píldoras de 1 Toque para Selección Rápida de Estado CRM
+  window.setVisitStatus = function(status) {
+    const input = document.getElementById('visit-status-select');
+    if (input) input.value = status;
+
+    document.querySelectorAll('#crm-status-pills .status-pill').forEach(btn => {
+      if (btn.dataset.status === status) {
+        btn.classList.add('active', 'ring-2', 'ring-offset-1', 'ring-blue-600', 'shadow-sm');
+      } else {
+        btn.classList.remove('active', 'ring-2', 'ring-offset-1', 'ring-blue-600', 'shadow-sm');
+      }
+    });
+  };
+
+  // Barra de Navegación Inferior (Thumb Bar)
+  window.switchMobileTab = function(tab) {
+    const listView = document.getElementById('places-list-panel');
+    const mapView = document.getElementById('map-panel');
+    const btnMap = document.getElementById('nav-btn-map');
+    const btnList = document.getElementById('nav-btn-list');
+
+    if (tab === 'list') {
+      if (listView) listView.classList.remove('hidden');
+      if (mapView) mapView.classList.add('hidden');
+      if (btnMap) btnMap.className = "flex flex-col items-center justify-center py-1 px-3 text-slate-500 font-medium text-[11px] active:scale-95 transition-transform";
+      if (btnList) btnList.className = "flex flex-col items-center justify-center py-1 px-3 text-blue-600 font-bold text-[11px] active:scale-95 transition-transform relative";
+      window.closePlaceDrawer();
+    } else {
+      if (listView) listView.classList.add('hidden');
+      if (mapView) mapView.classList.remove('hidden');
+      if (btnMap) btnMap.className = "flex flex-col items-center justify-center py-1 px-3 text-blue-600 font-bold text-[11px] active:scale-95 transition-transform";
+      if (btnList) btnList.className = "flex flex-col items-center justify-center py-1 px-3 text-slate-500 font-medium text-[11px] active:scale-95 transition-transform relative";
+      if (googleMapInstance && window.google && window.google.maps) {
+        google.maps.event?.trigger?.(googleMapInstance, 'resize');
+      }
+    }
+  };
 
   function renderOpportunityAudit(place) {
     const auditContainer = document.getElementById('drawer-audit-container');
@@ -1235,44 +1349,60 @@ import * as fb from './firebase-service.js';
         }
       }, 250);
     }
+    drawerMode = 'closed';
     selectedPlace = null;
   };
 
   function initDrawerGestures() {
     const drawer = document.getElementById('place-drawer');
+    const dragHandle = document.getElementById('drawer-drag-handle');
+    const headerPeek = document.getElementById('drawer-header-peek');
     if (!drawer) return;
 
     let startY = 0;
     let currentY = 0;
     let isDragging = false;
 
-    const dragHeader = drawer.querySelector('.border-b');
+    const touchTarget = dragHandle || headerPeek;
 
-    if (dragHeader) {
-      dragHeader.addEventListener('touchstart', (e) => {
+    if (touchTarget) {
+      touchTarget.addEventListener('touchstart', (e) => {
         if (e.target.closest('button') || e.target.closest('a')) return;
         startY = e.touches[0].clientY;
         currentY = startY;
         isDragging = true;
       }, { passive: true });
 
-      dragHeader.addEventListener('touchmove', (e) => {
+      touchTarget.addEventListener('touchmove', (e) => {
         if (!isDragging) return;
         currentY = e.touches[0].clientY;
         const diff = currentY - startY;
-        if (diff > 0) {
+
+        if (drawerMode === 'expanded' && diff > 0) {
+          drawer.style.transform = `translateY(${diff}px)`;
+        } else if (drawerMode === 'peek' && diff < 0) {
           drawer.style.transform = `translateY(${diff}px)`;
         }
       }, { passive: true });
 
-      dragHeader.addEventListener('touchend', () => {
+      touchTarget.addEventListener('touchend', () => {
         if (!isDragging) return;
         isDragging = false;
         const diff = currentY - startY;
         drawer.style.transform = '';
-        if (diff > 80) {
-          window.closePlaceDrawer();
+
+        if (drawerMode === 'expanded') {
+          if (diff > 90) {
+            collapseDrawerToPeek();
+          }
+        } else if (drawerMode === 'peek') {
+          if (diff < -40) {
+            expandDrawer();
+          } else if (diff > 70) {
+            window.closePlaceDrawer();
+          }
         }
+
         startY = 0;
         currentY = 0;
       });
@@ -1324,6 +1454,13 @@ import * as fb from './firebase-service.js';
     if (el) {
       el.innerText = `${total} locales | ${interested} interesados | ${closed} cerrados`;
     }
+
+    // Actualizar contadores en la barra inferior móvil
+    const navPlaces = document.getElementById('nav-places-count');
+    if (navPlaces) navPlaces.innerText = total;
+
+    const navSaved = document.getElementById('nav-saved-count');
+    if (navSaved) navSaved.innerText = savedSearches.length;
   }
 
   // ==========================================
