@@ -1,5 +1,5 @@
-// GeoProspector - Lógica con Firebase Firestore, Google Authentication & Google Maps Platform (Modern)
-// CRM de campo y gestión de prospección comercial en Santa Fe
+// GeoProspector - Exclusivo Google Maps Platform & Google Places API (New)
+// CRM de campo y gestión de prospección comercial en Santa Fe, Argentina
 
 import * as fb from './firebase-service.js';
 
@@ -7,55 +7,60 @@ import * as fb from './firebase-service.js';
   let currentUser = null;
   let places = [];
   let savedSearches = [];
-  let currentFilter = 'all'; // all, mechanical, dental, medical, aesthetic, hardware
+  let currentFilter = 'all'; // all, supermarket, textile, mechanical, dental, medical, aesthetic, hardware
   let currentStatusFilter = 'all'; // all, pending, interested, callback, closed, rejected
   let activeSearchQuery = '';
   let activeSavedSearchId = null;
   let activeSavedSearchName = '';
   
   let selectedPlace = null;
-  let map = null; // Leaflet instance
-  let markers = {}; // id -> Marker object
-  let currentMapEngine = 'leaflet'; // 'leaflet' o 'google'
+  let markers = {}; // id -> AdvancedMarkerElement / Marker
   let googleMapInstance = null;
   let userLocationMarker = null;
 
-  // Iconos SVG y Colores según categoría
+  // Iconos SVG y Colores según categoría para Google Maps PinElement
   const CATEGORY_COLORS = {
+    supermarket: '#16a34a', // Verde supermercados / alimentos
+    textile: '#8b5cf6', // Violeta telas / mercería / indumentaria
     mechanical: '#2563eb', // Azul automotor / mecánica
     dental: '#0284c7', // Celeste odontología
     medical: '#dc2626', // Rojo salud
     aesthetic: '#ec4899', // Rosa estética
     hardware: '#ea580c', // Naranja ferretería / industria
+    food: '#d97706', // Ámbar gastronomía
     general: '#475569' // Pizarra neutro
   };
 
   const CATEGORY_ICONS_SVG = {
+    supermarket: `<svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>`,
+    textile: `<svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879a3 3 0 11-4.242-4.242L7.757 7.757m0 0l4.243 4.243M7.757 7.757L3 3m13 13a3 3 0 104.243-4.243L16 16z"/></svg>`,
     mechanical: `<svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>`,
     dental: `<svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
     medical: `<svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>`,
     aesthetic: `<svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>`,
     hardware: `<svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>`,
+    food: `<svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>`,
     general: `<svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>`
   };
 
   // ==========================================
-  // INICIALIZACIÓN
+  // INICIALIZACIÓN DE LA APLICACIÓN
   // ==========================================
   window.addEventListener('DOMContentLoaded', async () => {
     places = window.getStoredPlaces();
     initUIEvents();
     initDrawerGestures();
-    
-    const config = window.getStoredConfig();
-    if (config.googleMapsApiKey && config.googleMapsApiKey.trim().length > 10) {
-      loadGoogleMapsAPI(config.googleMapsApiKey);
-    } else {
-      initLeafletMap(config.defaultCoords);
-    }
-
     renderPlacesList();
     updateStatsCounter();
+
+    const config = window.getStoredConfig();
+    const apiKey = (config.googleMapsApiKey || '').trim();
+
+    if (apiKey.length > 5) {
+      await initGoogleMapsApp(apiKey);
+    } else {
+      renderMapKeySetupCard();
+    }
 
     // Conectar con Firebase Auth & Firestore
     try {
@@ -80,7 +85,7 @@ import * as fb from './firebase-service.js';
         }
       });
     } catch (err) {
-      console.warn("Firebase initialization warning (fallback local):", err);
+      console.warn("Firebase warning (modo local activo):", err);
       updateSyncBadge(false, "Modo Local");
     }
   });
@@ -94,7 +99,7 @@ import * as fb from './firebase-service.js';
       if (cloudPlaces && cloudPlaces.length > 0) {
         places = cloudPlaces;
       } else {
-        // Primera vez del usuario en Firestore: inicializamos con la base de Santa Fe
+        // Inicializamos con la base de Santa Fe
         places = [...window.DEFAULT_PLACES];
         await fb.saveUserPlacesBatch(userId, places);
       }
@@ -107,6 +112,10 @@ import * as fb from './firebase-service.js';
         if (localConfig.googleMapsApiKey !== userSettings.googleMapsApiKey) {
           localConfig.googleMapsApiKey = userSettings.googleMapsApiKey;
           window.saveStoredConfig(localConfig);
+          // Si el mapa aún no estaba cargado, cargarlo ahora
+          if (!googleMapInstance) {
+            await initGoogleMapsApp(userSettings.googleMapsApiKey);
+          }
         }
       }
 
@@ -190,115 +199,68 @@ import * as fb from './firebase-service.js';
   };
 
   // ==========================================
-  // MAPA BASE RÁPIDO (LEAFLET)
+  // MOTOR GOOGLE MAPS PLATFORM (ÚNICO MOTOR DEL SISTEMA)
   // ==========================================
-  function initLeafletMap(coords) {
-    currentMapEngine = 'leaflet';
-    const mapContainer = document.getElementById('map');
-    mapContainer.innerHTML = '';
+  function loadGoogleMapsSDK(apiKey) {
+    return new Promise((resolve, reject) => {
+      if (window.google && window.google.maps && window.google.maps.importLibrary) {
+        return resolve(window.google.maps);
+      }
 
-    map = L.map('map', {
-      zoomControl: false,
-      attributionControl: false,
-      tap: true
-    }).setView([coords.lat, coords.lng], 14);
+      // Handler para fallos de autorización o claves inválidas
+      window.gm_authFailure = () => {
+        console.error("Google Maps authentication failure.");
+        renderGoogleMapsAuthError();
+      };
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19,
-      subdomains: 'abcd'
-    }).addTo(map);
+      const prevScript = document.getElementById('google-maps-js-sdk');
+      if (prevScript) prevScript.remove();
 
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
+      const script = document.createElement('script');
+      script.id = 'google-maps-js-sdk';
+      // Carga asíncrona moderna con Places API y Advanced Markers
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=weekly&libraries=places,marker&loading=async`;
+      script.async = true;
+      script.defer = true;
 
-    // Cerrar ficha al hacer clic en cualquier parte libre del mapa
-    map.on('click', () => {
-      window.closePlaceDrawer();
+      script.onload = () => {
+        if (window.google && window.google.maps) {
+          resolve(window.google.maps);
+        } else {
+          reject(new Error("Google Maps JS API no disponible tras la descarga del script."));
+        }
+      };
+
+      script.onerror = () => {
+        reject(new Error("Error de red al cargar Google Maps. Verifica tu conexión o bloqueadores."));
+      };
+
+      document.head.appendChild(script);
     });
-
-    renderLeafletMarkers();
   }
 
-  function createCustomMarkerIcon(place) {
-    const color = CATEGORY_COLORS[place.categoryType] || CATEGORY_COLORS.general;
-    const iconSvg = CATEGORY_ICONS_SVG[place.categoryType] || CATEGORY_ICONS_SVG.general;
+  async function initGoogleMapsApp(apiKey) {
+    const mapContainer = document.getElementById('map');
+    if (!mapContainer) return;
 
-    let statusBadge = '';
-    if (place.visitStatus === 'interested') {
-      statusBadge = '<span class="absolute -top-1 -right-1 flex h-4 w-4"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 border-2 border-white"></span></span>';
-    } else if (place.visitStatus === 'callback') {
-      statusBadge = '<span class="absolute -top-1 -right-1 inline-flex rounded-full h-3.5 w-3.5 bg-amber-500 border-2 border-white"></span>';
-    } else if (place.visitStatus === 'closed') {
-      statusBadge = '<span class="absolute -top-1 -right-1 inline-flex rounded-full h-4 w-4 bg-purple-600 border-2 border-white"></span>';
-    }
-
-    const html = `
-      <div class="relative group cursor-pointer transform transition-transform active:scale-95">
-        <div class="w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg border-2 border-white" style="background-color: ${color}">
-          ${iconSvg}
-        </div>
-        <div class="w-2.5 h-2.5 bg-white transform rotate-45 mx-auto -mt-1 shadow-md"></div>
-        ${statusBadge}
+    // Mostrar estado de carga
+    mapContainer.innerHTML = `
+      <div class="h-full w-full flex flex-col items-center justify-center bg-slate-50 text-slate-500 gap-3">
+        <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <p class="text-xs font-bold text-slate-700">Iniciando Google Maps Platform & Places API...</p>
+        <p class="text-[11px] text-slate-400">Santa Fe, Argentina</p>
       </div>
     `;
 
-    return L.divIcon({
-      html: html,
-      className: 'custom-map-pin',
-      iconSize: [40, 48],
-      iconAnchor: [20, 44]
-    });
-  }
-
-  function renderLeafletMarkers() {
-    if (!map) return;
-    Object.values(markers).forEach(m => {
-      if (m.remove) m.remove();
-    });
-    markers = {};
-
-    const filtered = getFilteredPlaces();
-
-    filtered.forEach(place => {
-      const icon = createCustomMarkerIcon(place);
-      const marker = L.marker([place.lat, place.lng], { icon: icon }).addTo(map);
-
-      marker.on('click', () => {
-        openPlaceDrawer(place);
-      });
-
-      markers[place.id] = marker;
-    });
-  }
-
-  // ==========================================
-  // GOOGLE MAPS JS API (MODERNO: loading=async, MapId, AdvancedMarkerElement)
-  // ==========================================
-  function loadGoogleMapsAPI(apiKey) {
-    if (window.google && window.google.maps) {
-      initGoogleMap();
-      return;
-    }
-
-    // Bootstrap loader moderno con loading=async y v=weekly para evitar warnings
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=weekly&libraries=places,marker&loading=async&callback=onGoogleMapsLoaded`;
-    script.async = true;
-    script.defer = true;
-    window.onGoogleMapsLoaded = initGoogleMap;
-    document.head.appendChild(script);
-  }
-
-  async function initGoogleMap() {
-    currentMapEngine = 'google';
-    const config = window.getStoredConfig();
-    const mapContainer = document.getElementById('map');
-    mapContainer.innerHTML = '';
-
     try {
+      await loadGoogleMapsSDK(apiKey);
       const { Map } = await google.maps.importLibrary("maps");
+      const config = window.getStoredConfig();
+
+      mapContainer.innerHTML = '';
 
       googleMapInstance = new Map(mapContainer, {
-        center: config.defaultCoords,
+        center: config.defaultCoords || { lat: -31.635, lng: -60.702 },
         zoom: 14,
         mapId: 'DEMO_MAP_ID', // Requerido para AdvancedMarkerElement
         disableDefaultUI: false,
@@ -309,7 +271,7 @@ import * as fb from './firebase-service.js';
         gestureHandling: 'greedy'
       });
 
-      // Cerrar ficha al hacer clic en el mapa de Google
+      // Cerrar ficha al tocar cualquier parte libre del mapa
       googleMapInstance.addListener('click', () => {
         window.closePlaceDrawer();
       });
@@ -321,15 +283,112 @@ import * as fb from './firebase-service.js';
         badge.innerHTML = `
           <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800">
             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            Google Places (New) En Vivo
+            Google Maps & Places (New)
           </span>
         `;
       }
     } catch (err) {
-      console.warn("Fallo al inicializar Google Maps (usando Leaflet fallback):", err);
-      initLeafletMap(config.defaultCoords);
+      console.error("Error al inicializar Google Maps:", err);
+      renderGoogleMapsAuthError(err.message);
     }
   }
+
+  function renderMapKeySetupCard() {
+    const mapContainer = document.getElementById('map');
+    if (!mapContainer) return;
+
+    mapContainer.innerHTML = `
+      <div class="h-full w-full flex items-center justify-center p-4 bg-slate-100">
+        <div class="bg-white rounded-3xl p-6 max-w-md w-full shadow-xl border border-slate-200 text-center space-y-4">
+          <div class="w-14 h-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center mx-auto shadow-md shadow-blue-600/30">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">Activar Google Maps & Google Places</h3>
+            <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+              Este sistema funciona exclusivamente con <b>Google Maps</b> y <b>Google Places API (New)</b>. Ingresa tu API Key para ver el mapa de Santa Fe y buscar prospectos:
+            </p>
+          </div>
+          <div class="space-y-2 text-left">
+            <label class="block text-[11px] font-bold text-slate-700">Google Maps Platform API Key:</label>
+            <div class="relative flex items-center">
+              <input type="text" id="direct-map-key-input" placeholder="AIzaSy..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 font-mono text-xs focus:ring-2 focus:ring-blue-600 text-slate-900 pr-16">
+              <button type="button" onclick="navigator.clipboard?.readText().then(t => { if(t) document.getElementById('direct-map-key-input').value = t.trim(); })" class="absolute right-1 px-2.5 py-1 text-[11px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg active:bg-slate-300">
+                Pegar
+              </button>
+            </div>
+            <button onclick="window.applyDirectMapKey()" class="w-full py-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5">
+              <span>Cargar Google Maps & Places</span>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+            </button>
+          </div>
+          <div class="text-[11px] text-slate-500 bg-blue-50 border border-blue-200 rounded-xl p-3 text-left space-y-1">
+            <p class="font-bold text-blue-900">APIs requeridas en Google Cloud Console:</p>
+            <p>1. <b>Maps JavaScript API</b></p>
+            <p>2. <b>Places API (New)</b></p>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderGoogleMapsAuthError(customMessage) {
+    const mapContainer = document.getElementById('map');
+    if (!mapContainer) return;
+
+    const currentKey = window.getStoredConfig().googleMapsApiKey || '';
+    const maskedKey = currentKey ? (currentKey.slice(0, 8) + '...' + currentKey.slice(-4)) : 'No configurada';
+
+    mapContainer.innerHTML = `
+      <div class="h-full w-full flex items-center justify-center p-4 bg-slate-100">
+        <div class="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-rose-200 text-center space-y-4">
+          <div class="w-14 h-14 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto text-2xl shadow-sm">⚠️</div>
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">Error al cargar Google Maps</h3>
+            <p class="text-xs text-rose-700 font-medium mt-1">
+              Google Maps rechazó la clave ingresada (${maskedKey}).
+            </p>
+            ${customMessage ? `<p class="text-[11px] text-slate-500 mt-1 italic">${customMessage}</p>` : ''}
+          </div>
+          <div class="text-[11px] text-slate-700 bg-rose-50/80 border border-rose-200 rounded-2xl p-3.5 text-left space-y-1.5 leading-relaxed">
+            <p class="font-bold text-rose-900">Pasos para solucionarlo en Google Cloud:</p>
+            <p>• <b>Maps JavaScript API</b>: Entra a <a href="https://console.cloud.google.com/google/maps-apis/overview" target="_blank" class="text-blue-600 underline font-semibold">Google Maps Console</a> y asegúrate de que esté habilitada.</p>
+            <p>• <b>Places API (New)</b>: Habilítala para búsquedas de locales comerciales.</p>
+            <p>• <b>Facturación (Billing)</b>: Google exige vincular una cuenta de facturación (tienes $200 USD gratis al mes).</p>
+            <p>• <b>Restricciones de Clave</b>: Si tiene restricciones HTTP referrer, permite este dominio.</p>
+          </div>
+          <div class="space-y-2">
+            <button onclick="window.openSettingsModal()" class="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-xs transition-colors">
+              Modificar o Cambiar API Key
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  window.applyDirectMapKey = async function() {
+    const input = document.getElementById('direct-map-key-input');
+    if (!input) return;
+    const key = input.value.trim();
+    if (!key || key.length < 5) {
+      alert("Por favor ingresa una API Key válida de Google Maps.");
+      return;
+    }
+
+    const cfg = window.getStoredConfig();
+    cfg.googleMapsApiKey = key;
+    window.saveStoredConfig(cfg);
+
+    if (currentUser) {
+      fb.saveUserSettings(currentUser.uid, { googleMapsApiKey: key }).catch(console.error);
+    }
+
+    const inputModal = document.getElementById('input-google-key');
+    if (inputModal) inputModal.value = key;
+
+    await initGoogleMapsApp(key);
+  };
 
   async function renderGoogleMarkers() {
     if (!googleMapInstance) return;
@@ -363,27 +422,36 @@ import * as fb from './firebase-service.js';
           content: pin
         });
 
-        marker.addEventListener('gmp-click', () => {
+        marker.addListener('click', () => {
           openPlaceDrawer(place);
         });
 
         markers[place.id] = marker;
       });
     } catch (e) {
-      console.warn("AdvancedMarkerElement fallback:", e);
+      console.warn("AdvancedMarkerElement no disponible, usando Marker estándar:", e);
+      filtered.forEach(place => {
+        const marker = new google.maps.Marker({
+          position: { lat: place.lat, lng: place.lng },
+          map: googleMapInstance,
+          title: place.name
+        });
+        marker.addListener('click', () => {
+          openPlaceDrawer(place);
+        });
+        markers[place.id] = marker;
+      });
     }
   }
 
   async function renderCurrentMapMarkers() {
-    if (currentMapEngine === 'google' && googleMapInstance) {
+    if (googleMapInstance) {
       await renderGoogleMarkers();
-    } else if (map) {
-      renderLeafletMarkers();
     }
   }
 
   // ==========================================
-  // BÚSQUEDA GENERAL (GOOGLE PLACES API NEW O LOCAL)
+  // BÚSQUEDA GENERAL (GOOGLE PLACES API NEW)
   // ==========================================
   window.searchPlacesQuery = async function(query) {
     if (!query || query.trim().length === 0) {
@@ -391,16 +459,72 @@ import * as fb from './firebase-service.js';
       hideActiveListBanner();
       await renderCurrentMapMarkers();
       renderPlacesList();
+      updateStatsCounter();
       return;
     }
 
     const cleanQuery = query.trim().toLowerCase();
     activeSearchQuery = cleanQuery;
 
-    // Si Google Maps API está activo en vivo, usa Place.searchByText moderno
-    if (googleMapInstance && window.google && window.google.maps) {
-      await executeGooglePlacesSearch(cleanQuery);
-    } else {
+    const searchBtn = document.getElementById('btn-search-places');
+    const origHtml = searchBtn ? searchBtn.innerHTML : 'Buscar';
+    if (searchBtn) {
+      searchBtn.innerHTML = `<span class="animate-spin inline-block">⏳</span> Buscando...`;
+      searchBtn.disabled = true;
+    }
+
+    try {
+      let addedFromGoogle = 0;
+
+      // 1. Búsqueda directa en Google Places API (New)
+      if (googleMapInstance && window.google && window.google.maps) {
+        addedFromGoogle = await executeGooglePlacesSearch(cleanQuery);
+      }
+
+      // 2. Si Google Places client-side no arrojó nuevos o hubo restricciones de origen, consultar endpoint de apoyo
+      if (addedFromGoogle === 0) {
+        let currentLat = -31.635;
+        let currentLng = -60.702;
+        if (googleMapInstance && typeof googleMapInstance.getCenter === 'function') {
+          const c = googleMapInstance.getCenter();
+          currentLat = typeof c.lat === 'function' ? c.lat() : c.lat;
+          currentLng = typeof c.lng === 'function' ? c.lng() : c.lng;
+        }
+
+        const config = window.getStoredConfig();
+        const response = await fetch(`/api/places/search?q=${encodeURIComponent(cleanQuery)}&lat=${currentLat}&lng=${currentLng}`, {
+          headers: {
+            'x-google-api-key': config.googleMapsApiKey || ''
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.places && Array.isArray(data.places) && data.places.length > 0) {
+            const newPlacesBatch = [];
+            data.places.forEach(p => {
+              const alreadyExists = places.some(existing => 
+                existing.id === p.id || 
+                existing.name.toLowerCase() === p.name.toLowerCase() ||
+                (Math.abs(existing.lat - p.lat) < 0.0003 && Math.abs(existing.lng - p.lng) < 0.0003)
+              );
+              if (!alreadyExists) {
+                places.unshift(p);
+                newPlacesBatch.push(p);
+              }
+            });
+
+            if (newPlacesBatch.length > 0) {
+              window.saveStoredPlaces(places);
+              if (currentUser) {
+                fb.saveUserPlacesBatch(currentUser.uid, newPlacesBatch).catch(console.error);
+              }
+            }
+          }
+        }
+      }
+
+      // 3. Actualizar vistas, banners y mapa
       activeSavedSearchId = null;
       activeSavedSearchName = '';
       showActiveListBanner(`Búsqueda: "${query.trim()}"`);
@@ -411,23 +535,37 @@ import * as fb from './firebase-service.js';
       const matched = getFilteredPlaces();
       if (matched.length > 0) {
         centerMapOnCoord(matched[0].lat, matched[0].lng);
+      } else {
+        alert(`No se encontraron locales para "${query}". Prueba con "supermercado", "telas", "taller", "ferretería", "odontología", etc.`);
+      }
+
+    } catch (err) {
+      console.error("Error ejecutando búsqueda:", err);
+      activeSavedSearchId = null;
+      activeSavedSearchName = '';
+      showActiveListBanner(`Búsqueda: "${query.trim()}"`);
+      await renderCurrentMapMarkers();
+      renderPlacesList();
+      updateStatsCounter();
+    } finally {
+      if (searchBtn) {
+        searchBtn.innerHTML = origHtml;
+        searchBtn.disabled = false;
       }
     }
   };
 
+  // Alias para compatibilidad total
+  window.searchGooglePlacesInZone = window.searchPlacesQuery;
+
   // Búsqueda moderna usando google.maps.places.Place.searchByText (Places API New)
   async function executeGooglePlacesSearch(query) {
-    const searchBtn = document.getElementById('btn-search-places');
-    const origHtml = searchBtn.innerHTML;
-    searchBtn.innerHTML = `<span class="animate-spin inline-block">⏳</span>`;
-    searchBtn.disabled = true;
-
     try {
       const center = googleMapInstance.getCenter();
       const { Place } = await google.maps.importLibrary("places");
 
       const request = {
-        textQuery: query,
+        textQuery: `${query} Santa Fe Argentina`,
         fields: [
           'id', 
           'displayName', 
@@ -448,9 +586,6 @@ import * as fb from './firebase-service.js';
 
       const { places: results } = await Place.searchByText(request);
 
-      searchBtn.innerHTML = origHtml;
-      searchBtn.disabled = false;
-
       if (results && results.length > 0) {
         let addedCount = 0;
         const newPlacesBatch = [];
@@ -465,7 +600,11 @@ import * as fb from './firebase-service.js';
             const nameLower = placeName.toLowerCase();
             const queryLower = query.toLowerCase();
 
-            if (types.includes('car_repair') || types.includes('car_dealer') || queryLower.includes('mecanic') || queryLower.includes('taller') || nameLower.includes('taller') || nameLower.includes('mecanic')) {
+            if (types.includes('supermarket') || types.includes('grocery_store') || queryLower.includes('super') || queryLower.includes('mercado') || nameLower.includes('super') || nameLower.includes('mercado')) {
+              catType = 'supermarket';
+            } else if (types.includes('clothing_store') || queryLower.includes('tela') || queryLower.includes('mercer') || queryLower.includes('textil') || nameLower.includes('tela') || nameLower.includes('mercer')) {
+              catType = 'textile';
+            } else if (types.includes('car_repair') || types.includes('car_dealer') || queryLower.includes('mecanic') || queryLower.includes('taller') || nameLower.includes('taller') || nameLower.includes('mecanic')) {
               catType = 'mechanical';
             } else if (types.includes('dentist') || queryLower.includes('odont') || queryLower.includes('dent')) {
               catType = 'dental';
@@ -494,9 +633,9 @@ import * as fb from './firebase-service.js';
             const newPlace = {
               id: placeId || 'pl-' + Date.now() + Math.random().toString(36).substr(2, 4),
               name: placeName,
-              category: types && types[0] ? types[0].replace(/_/g, ' ') : 'Comercio',
+              category: types && types[0] ? types[0].replace(/_/g, ' ') : 'Comercio Google',
               categoryType: catType,
-              address: res.formattedAddress || '',
+              address: res.formattedAddress || 'Santa Fe, Argentina',
               phone: res.nationalPhoneNumber || '',
               website: res.websiteURI || '',
               rating: res.rating || 0,
@@ -514,7 +653,7 @@ import * as fb from './firebase-service.js';
                 hasWebsite: !!(res.websiteURI && res.websiteURI.length > 3),
                 lowReviews: (res.userRatingCount || 0) < 20,
                 unclaimedProfile: false,
-                hook: `Tiene ${res.userRatingCount || 0} reseñas en Google con ${res.rating || 'sin'} estrellas.`
+                hook: `Tiene ${res.userRatingCount || 0} reseñas en Google con ${res.rating || 'sin'} estrellas en Santa Fe.`
               }
             };
             places.unshift(newPlace);
@@ -527,30 +666,19 @@ import * as fb from './firebase-service.js';
           fb.saveUserPlacesBatch(currentUser.uid, newPlacesBatch).catch(console.error);
         }
         window.saveStoredPlaces(places);
-
-        showActiveListBanner(`Resultados de "${query}"`);
-        await renderCurrentMapMarkers();
-        renderPlacesList();
-        updateStatsCounter();
-
-        alert(`¡Listo! Se encontraron y agregaron ${addedCount} locales nuevos de "${query}" con Places API (New).`);
-      } else {
-        alert("Google Places (New) no encontró nuevos resultados para esa búsqueda en la zona.");
+        return addedCount;
       }
+      return 0;
     } catch (err) {
-      console.error("Error en Google Places searchByText:", err);
-      searchBtn.innerHTML = origHtml;
-      searchBtn.disabled = false;
-      alert("Error al buscar en Google Places: " + (err.message || "Verifica tu clave o conexión."));
+      console.warn("Google Places searchByText error:", err.message);
+      return 0;
     }
   }
 
   function centerMapOnCoord(lat, lng) {
-    if (currentMapEngine === 'google' && googleMapInstance) {
+    if (googleMapInstance) {
       googleMapInstance.panTo({ lat, lng });
       googleMapInstance.setZoom(15);
-    } else if (map) {
-      map.setView([lat, lng], 15);
     }
   }
 
@@ -572,9 +700,16 @@ import * as fb from './firebase-service.js';
         const q = activeSearchQuery.toLowerCase();
         const textToSearch = `${p.name} ${p.category} ${p.address} ${p.notes || ''} ${p.categoryType}`.toLowerCase();
         const matchesQuery = textToSearch.includes(q) || 
+          (q.includes('super') && (p.categoryType === 'supermarket' || textToSearch.includes('super'))) ||
+          (q.includes('mercado') && (p.categoryType === 'supermarket' || textToSearch.includes('mercado'))) ||
+          (q.includes('almacen') && (p.categoryType === 'supermarket' || textToSearch.includes('almacen'))) ||
+          (q.includes('tela') && (p.categoryType === 'textile' || textToSearch.includes('tela'))) ||
+          (q.includes('mercer') && (p.categoryType === 'textile' || textToSearch.includes('mercer'))) ||
+          (q.includes('textil') && (p.categoryType === 'textile' || textToSearch.includes('textil'))) ||
           (q.includes('taller') && (p.categoryType === 'mechanical' || textToSearch.includes('mecanic'))) ||
           (q.includes('mecanic') && p.categoryType === 'mechanical') ||
           (q.includes('dent') && p.categoryType === 'dental') ||
+          (q.includes('odont') && p.categoryType === 'dental') ||
           (q.includes('medic') && p.categoryType === 'medical') ||
           (q.includes('estet') && p.categoryType === 'aesthetic') ||
           (q.includes('ferret') && p.categoryType === 'hardware');
@@ -728,6 +863,8 @@ import * as fb from './firebase-service.js';
       defaultName = capitalizeText(activeSearchQuery);
     } else if (currentFilter !== 'all') {
       const categoryNames = {
+        supermarket: 'Supermercados',
+        textile: 'Tiendas de Telas & Mercerías',
         mechanical: 'Talleres Mecánicos',
         dental: 'Consultorios Odontológicos',
         medical: 'Centros Médicos & Sanatorios',
@@ -804,7 +941,7 @@ import * as fb from './firebase-service.js';
         <div class="p-8 text-center text-slate-400 space-y-2">
           <div class="text-3xl">📁</div>
           <p class="font-semibold text-slate-600">No tienes listas guardadas aún.</p>
-          <p class="text-[11px] text-slate-400 max-w-xs mx-auto">Realiza una búsqueda (ej: "talleres mecánicos", "odontología") y pulsa "Guardar Lista" para tener acceso rápido.</p>
+          <p class="text-[11px] text-slate-400 max-w-xs mx-auto">Realiza una búsqueda (ej: "supermercados", "telas", "talleres") y pulsa "Guardar Lista" para tener acceso rápido.</p>
         </div>
       `;
       return;
@@ -995,7 +1132,7 @@ import * as fb from './firebase-service.js';
       } else if (!rawPhone.startsWith('54')) {
         rawPhone = '549' + rawPhone;
       }
-      const msg = encodeURIComponent(`Hola ${place.name}, nos comunicamos para acercarles una propuesta de posicionamiento en Google Maps y captación de clientes.`);
+      const msg = encodeURIComponent(`Hola ${place.name}, nos comunicamos para acercarles una propuesta de posicionamiento en Google Maps y captación de clientes en Santa Fe.`);
       btnWhatsapp.href = `https://wa.me/${rawPhone}?text=${msg}`;
       btnWhatsapp.classList.remove('hidden');
     } else {
@@ -1030,7 +1167,7 @@ import * as fb from './firebase-service.js';
           </div>
         </div>
         <p class="text-slate-700 text-[11px] leading-relaxed border-t border-amber-200/80 pt-2 font-medium">
-          ${place.auditSummary?.hook || 'Negocio con alta afluencia pero potencial de conversión desaprovechado.'}
+          ${place.auditSummary?.hook || 'Negocio de Santa Fe con alta afluencia pero potencial de conversión desaprovechado.'}
         </p>
       </div>
     `;
@@ -1064,7 +1201,6 @@ import * as fb from './firebase-service.js';
     let currentY = 0;
     let isDragging = false;
 
-    // Solo iniciar arrastre táctil desde el header para no bloquear el scroll del contenido
     const dragHeader = drawer.querySelector('.border-b');
 
     if (dragHeader) {
@@ -1146,7 +1282,7 @@ import * as fb from './firebase-service.js';
   }
 
   // ==========================================
-  // GPS EN VIVO (ANDROID / CHROME)
+  // GPS EN VIVO (GOOGLE MAPS)
   // ==========================================
   window.locateUserPosition = function() {
     if (!navigator.geolocation) {
@@ -1163,7 +1299,7 @@ import * as fb from './firebase-service.js';
         const userLat = pos.coords.latitude;
         const userLng = pos.coords.longitude;
 
-        if (currentMapEngine === 'google' && googleMapInstance) {
+        if (googleMapInstance) {
           googleMapInstance.panTo({ lat: userLat, lng: userLng });
           googleMapInstance.setZoom(16);
 
@@ -1174,7 +1310,7 @@ import * as fb from './firebase-service.js';
                 background: '#2563eb',
                 borderColor: '#ffffff',
                 glyphColor: '#ffffff',
-                scale: 0.9
+                scale: 0.95
               });
               userLocationMarker = new AdvancedMarkerElement({
                 position: { lat: userLat, lng: userLng },
@@ -1185,19 +1321,16 @@ import * as fb from './firebase-service.js';
             } else {
               userLocationMarker.position = { lat: userLat, lng: userLng };
             }
-          } catch (e) {}
-        } else if (map) {
-          map.setView([userLat, userLng], 16);
-
-          if (!userLocationMarker) {
-            const gpsIcon = L.divIcon({
-              html: `<div class="w-5 h-5 rounded-full bg-blue-600 border-2 border-white shadow-xl animate-ping"></div>`,
-              className: 'gps-dot',
-              iconSize: [20, 20]
-            });
-            userLocationMarker = L.marker([userLat, userLng], { icon: gpsIcon }).addTo(map);
-          } else {
-            userLocationMarker.setLatLng([userLat, userLng]);
+          } catch (e) {
+            if (!userLocationMarker) {
+              userLocationMarker = new google.maps.Marker({
+                position: { lat: userLat, lng: userLng },
+                map: googleMapInstance,
+                title: "Estás aquí"
+              });
+            } else {
+              userLocationMarker.setPosition({ lat: userLat, lng: userLng });
+            }
           }
         }
       },
@@ -1262,7 +1395,6 @@ import * as fb from './firebase-service.js';
           listView.classList.add('hidden');
           mapView.classList.remove('hidden');
           btnToggleView.innerHTML = `<span>Lista</span>`;
-          if (map) map.invalidateSize();
         }
       });
     }
@@ -1293,7 +1425,10 @@ import * as fb from './firebase-service.js';
   // ==========================================
   window.openSettingsModal = function() {
     const config = window.getStoredConfig();
-    document.getElementById('input-google-key').value = config.googleMapsApiKey || '';
+    const input = document.getElementById('input-google-key');
+    if (input) {
+      input.value = config.googleMapsApiKey || '';
+    }
 
     const profileSection = document.getElementById('user-profile-section');
     if (profileSection) {
@@ -1307,7 +1442,7 @@ import * as fb from './firebase-service.js';
                 <h4 class="font-bold text-slate-900 text-xs">${currentUser.displayName || 'Usuario Google'}</h4>
                 <p class="text-[11px] text-slate-500">${currentUser.email}</p>
                 <span class="inline-flex items-center gap-1 text-[10px] text-emerald-700 font-semibold mt-0.5">
-                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Datos aislados en Firestore (Capa Gratuita)
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Datos en Firebase Firestore
                 </span>
               </div>
             </div>
@@ -1324,7 +1459,7 @@ import * as fb from './firebase-service.js';
               <span class="text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md text-[10px] font-semibold">Modo Invitado / Local</span>
             </div>
             <p class="text-[11px] text-slate-500 leading-relaxed">
-              Inicia sesión con Google para guardar tus prospectos, notas de visitas y listas de búsqueda en Firebase Firestore y acceder desde cualquier celular o PC.
+              Inicia sesión con Google para guardar tus prospectos, notas de visitas y listas de búsqueda en Firebase Firestore.
             </p>
             <button onclick="window.handleGoogleLogin()" class="w-full py-2.5 bg-blue-600 active:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-xs">
               <svg class="w-4 h-4" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
@@ -1343,7 +1478,8 @@ import * as fb from './firebase-service.js';
   };
 
   window.saveSettings = async function() {
-    const googleKey = document.getElementById('input-google-key').value.trim();
+    const input = document.getElementById('input-google-key');
+    const googleKey = (input ? input.value : '').trim();
     const currentCfg = window.getStoredConfig();
     
     const newCfg = {
@@ -1354,17 +1490,15 @@ import * as fb from './firebase-service.js';
     window.saveStoredConfig(newCfg);
 
     if (currentUser) {
-      await fb.saveUserSettings(currentUser.uid, { googleMapsApiKey: googleKey });
+      await fb.saveUserSettings(currentUser.uid, { googleMapsApiKey: googleKey }).catch(console.error);
     }
 
-    closeSettingsModal();
+    window.closeSettingsModal();
 
-    if (googleKey && googleKey !== currentCfg.googleMapsApiKey) {
-      if (confirm("Se guardó tu Google Maps API Key. ¿Deseas recargar la app para activar el motor de Google Maps en vivo?")) {
-        window.location.reload();
-      }
+    if (googleKey && googleKey.length > 5) {
+      await initGoogleMapsApp(googleKey);
     } else {
-      alert("Ajustes guardados correctamente.");
+      renderMapKeySetupCard();
     }
   };
 

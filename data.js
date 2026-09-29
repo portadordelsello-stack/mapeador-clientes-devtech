@@ -1,7 +1,294 @@
-// Base de datos inicial para Santa Fe (Precargada para funcionar de inmediato)
-// Incluye talleres mecánicos, odontología, medicina, estética y ferreterías
+// Base de datos de locales comerciales para Santa Fe, Argentina
+// Incluye Supermercados, Tiendas de Telas & Mercerías, Talleres Mecánicos,
+// Odontología, Medicina & Sanatorios, Estética & Belleza y Ferreterías.
 
 window.DEFAULT_PLACES = [
+  // --- SUPERMERCADOS & AUTOSERVICIOS (SANTA FE) ---
+  {
+    id: "sf-super-coto-puerto",
+    name: "Hipermercado Coto - Puerto Santa Fe",
+    category: "Supermercado / Hipermercado",
+    categoryType: "supermarket",
+    address: "Dique 1, Puerto de Santa Fe, Santa Fe",
+    phone: "+54 342 450-4500",
+    website: "https://www.coto.com.ar",
+    rating: 4.4,
+    reviewCount: 4210,
+    openStatus: "Abierto · Cierra 21:30",
+    lat: -31.6515,
+    lng: -60.6978,
+    photos: [
+      "https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=600&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&auto=format&fit=crop&q=80"
+    ],
+    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Coto+Puerto+Santa+Fe",
+    visitStatus: "pending",
+    contactName: "Gerencia Comercial",
+    contactPhone: "+54 342 450-4500",
+    notes: "",
+    auditSummary: {
+      hasWebsite: true,
+      lowReviews: false,
+      unclaimedProfile: false,
+      hook: "Punto neurálgico en Puerto Santa Fe. Alto tráfico diario y potencial para alianzas comerciales y promociones geolocalizadas."
+    }
+  },
+  {
+    id: "sf-super-kilbel-candido",
+    name: "Supermercados Kilbel - Sucursal San Jerónimo",
+    category: "Cadena de Supermercados",
+    categoryType: "supermarket",
+    address: "San Jerónimo 3450 y Cándido Pujato, Santa Fe",
+    phone: "+54 342 453-2900",
+    website: "https://www.kilbel.com.ar",
+    rating: 4.2,
+    reviewCount: 312,
+    openStatus: "Abierto · Cierra 21:00",
+    lat: -31.6368,
+    lng: -60.7065,
+    photos: [
+      "https://images.unsplash.com/photo-1583258292688-d0213dc5a3a8?w=600&auto=format&fit=crop&q=80"
+    ],
+    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Supermercados+Kilbel+San+Jeronimo+Santa+Fe",
+    visitStatus: "pending",
+    contactName: "",
+    contactPhone: "",
+    notes: "",
+    auditSummary: {
+      hasWebsite: true,
+      lowReviews: false,
+      unclaimedProfile: false,
+      hook: "Supermercado tradicional en zona centro-norte. Oportunidad en optimización de catálogo digital y delivery en Santa Fe."
+    }
+  },
+  {
+    id: "sf-super-alvear-boulevard",
+    name: "Supermercados Alvear - Boulevard",
+    category: "Supermercado y Fiambrería",
+    categoryType: "supermarket",
+    address: "Bv. Pellegrini 2780 esq. San Jerónimo, Santa Fe",
+    phone: "+54 342 455-8822",
+    website: "https://supermercadosalvear.com.ar",
+    rating: 4.5,
+    reviewCount: 540,
+    openStatus: "Abierto · Cierra 21:30",
+    lat: -31.6382,
+    lng: -60.7052,
+    photos: [
+      "https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=600&auto=format&fit=crop&q=80"
+    ],
+    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Supermercados+Alvear+Boulevard+Santa+Fe",
+    visitStatus: "pending",
+    contactName: "",
+    contactPhone: "",
+    notes: "",
+    auditSummary: {
+      hasWebsite: true,
+      lowReviews: false,
+      unclaimedProfile: false,
+      hook: "Ubicación prémium en Barrio Candioti / Boulevard. Oportunidad para captar clientes corporativos y eventos."
+    }
+  },
+  {
+    id: "sf-super-mayorista-buensol",
+    name: "Supermercado Mayorista Buen Sol S.R.L.",
+    category: "Mayorista de Alimentos & Bebidas",
+    categoryType: "supermarket",
+    address: "Santiago del Estero 2850, Santa Fe",
+    phone: "+54 342 453-9911",
+    website: "", // Sin web = Oportunidad
+    rating: 4.3,
+    reviewCount: 68,
+    openStatus: "Abierto · Cierra 18:30",
+    lat: -31.6390,
+    lng: -60.6999,
+    photos: [
+      "https://images.unsplash.com/photo-1534723452862-4c874018d66d?w=600&auto=format&fit=crop&q=80"
+    ],
+    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Supermercado+Mayorista+Buen+Sol+Santa+Fe",
+    visitStatus: "pending",
+    contactName: "",
+    contactPhone: "",
+    notes: "",
+    auditSummary: {
+      hasWebsite: false,
+      lowReviews: false,
+      unclaimedProfile: false,
+      hook: "Mayorista de gran volumen pero SIN SITIO WEB NI CATÁLOGO ONLINE. Clave para ofrecer tienda B2B mayorista."
+    }
+  },
+  {
+    id: "sf-super-patricia",
+    name: "Supermercado Patricia - Aristóbulo",
+    category: "Supermercado de Barrio",
+    categoryType: "supermarket",
+    address: "Av. Aristóbulo del Valle 5840, Santa Fe",
+    phone: "+54 342 460-1420",
+    website: "", // Sin web = Oportunidad
+    rating: 4.1,
+    reviewCount: 45,
+    openStatus: "Abierto · Cierra 20:30",
+    lat: -31.6276,
+    lng: -60.7001,
+    photos: [
+      "https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&auto=format&fit=crop&q=80"
+    ],
+    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Supermercado+Patricia+Aristobulo+Santa+Fe",
+    visitStatus: "pending",
+    contactName: "",
+    contactPhone: "",
+    notes: "",
+    auditSummary: {
+      hasWebsite: false,
+      lowReviews: false,
+      unclaimedProfile: false,
+      hook: "Supermercado barrial consolidado sobre avenida comercial pero sin presencia web ni promociones digitales."
+    }
+  },
+
+  // --- TIENDAS DE TELAS, MERCERÍAS & TEXTILES (SANTA FE) ---
+  {
+    id: "sf-telas-tienda-sanjeronimo",
+    name: "Tienda de Telas San Jerónimo",
+    category: "Telas por Metro, Seda & Confección",
+    categoryType: "textile",
+    address: "San Jerónimo 3120, Ex-Plaza España, Santa Fe",
+    phone: "+54 342 455-8910",
+    website: "", // Sin web = Oportunidad
+    rating: 4.7,
+    reviewCount: 24,
+    openStatus: "Abierto · Cierra 19:30",
+    lat: -31.6385,
+    lng: -60.7058,
+    photos: [
+      "https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?w=600&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?w=600&auto=format&fit=crop&q=80"
+    ],
+    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Tienda+de+Telas+San+Jeronimo+Santa+Fe",
+    visitStatus: "pending",
+    contactName: "Silvia (Propietaria)",
+    contactPhone: "+54 342 455-8910",
+    notes: "",
+    auditSummary: {
+      hasWebsite: false,
+      lowReviews: false,
+      unclaimedProfile: false,
+      hook: "Tienda histórica de telas en San Jerónimo. Clientes buscan catálogo de telas de fiesta y tapicería pero NO tiene web ni WhatsApp Business integrado."
+    }
+  },
+  {
+    id: "sf-telas-la-tijera-peatonal",
+    name: "La Tijera - Telas & Mercería Peatonal",
+    category: "Venta de Telas, Lanas y Mercería",
+    categoryType: "textile",
+    address: "San Martín 2450, Peatonal Santa Fe",
+    phone: "+54 342 455-1234",
+    website: "", // Sin web = Oportunidad
+    rating: 4.8,
+    reviewCount: 38,
+    openStatus: "Abierto · Cierra 20:00",
+    lat: -31.6490,
+    lng: -60.7080,
+    photos: [
+      "https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?w=600&auto=format&fit=crop&q=80"
+    ],
+    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=La+Tijera+Telas+San+Martin+Santa+Fe",
+    visitStatus: "pending",
+    contactName: "",
+    contactPhone: "",
+    notes: "",
+    auditSummary: {
+      hasWebsite: false,
+      lowReviews: false,
+      unclaimedProfile: false,
+      hook: "Plena peatonal comercial santafesina. Gran tráfico de costureras y modistas que necesitan consultar stock y precios online."
+    }
+  },
+  {
+    id: "sf-telas-rivadavia",
+    name: "Telas & Diseños Rivadavia",
+    category: "Telas de Vestir, Punto & Cortinería",
+    categoryType: "textile",
+    address: "Av. Rivadavia 2840, Santa Fe",
+    phone: "+54 342 456-7788",
+    website: "",
+    rating: 4.6,
+    reviewCount: 16,
+    openStatus: "Abierto · Cierra 19:00",
+    lat: -31.6410,
+    lng: -60.7012,
+    photos: [
+      "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=600&auto=format&fit=crop&q=80"
+    ],
+    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Telas+Rivadavia+Santa+Fe",
+    visitStatus: "pending",
+    contactName: "",
+    contactPhone: "",
+    notes: "",
+    auditSummary: {
+      hasWebsite: false,
+      lowReviews: true,
+      unclaimedProfile: false,
+      hook: "Muy pocas reseñas en Google Maps (16) a pesar de estar sobre el corredor mayorista de Av. Rivadavia. Oportunidad en captación de talleres de indumentaria."
+    }
+  },
+  {
+    id: "sf-telas-boulevard-sederia",
+    name: "Sedería & Telas Finas Boulevard",
+    category: "Sedería, Encajes & Telas de Alta Costura",
+    categoryType: "textile",
+    address: "Bv. Pellegrini 2610, Santa Fe",
+    phone: "+54 342 454-0012",
+    website: "https://sederiaboulevard.com.ar",
+    rating: 4.9,
+    reviewCount: 52,
+    openStatus: "Abierto · Cierra 19:30",
+    lat: -31.6375,
+    lng: -60.7035,
+    photos: [
+      "https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?w=600&auto=format&fit=crop&q=80"
+    ],
+    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Sederia+Boulevard+Santa+Fe",
+    visitStatus: "pending",
+    contactName: "Mirta (Diseñadora)",
+    contactPhone: "+54 342 454-0012",
+    notes: "",
+    auditSummary: {
+      hasWebsite: true,
+      lowReviews: false,
+      unclaimedProfile: false,
+      hook: "Negocio de alta gama especializado en novias y 15 años. Buena presencia pero requiere campañas de posicionamiento geolocalizado en Santa Fe y Paraná."
+    }
+  },
+  {
+    id: "sf-textil-retazos-suipacha",
+    name: "Telas & Retazos del Litoral",
+    category: "Retacería y Mayorista de Telas",
+    categoryType: "textile",
+    address: "Suipacha 2730, Santa Fe",
+    phone: "+54 342 452-9800",
+    website: "",
+    rating: 4.4,
+    reviewCount: 11,
+    openStatus: "Abierto · Cierra 18:00",
+    lat: -31.6391,
+    lng: -60.7085,
+    photos: [
+      "https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?w=600&auto=format&fit=crop&q=80"
+    ],
+    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Retazos+Suipacha+Santa+Fe",
+    visitStatus: "pending",
+    contactName: "",
+    contactPhone: "",
+    notes: "",
+    auditSummary: {
+      hasWebsite: false,
+      lowReviews: true,
+      unclaimedProfile: false,
+      hook: "Precios competitivos por kilo pero solo 11 reseñas en Google. Oportunidad para mejorar presencia en el mapa comercial."
+    }
+  },
+
   // --- TALLERES MECÁNICOS & AUTOMOTRIZ ---
   {
     id: "sf-taller-santafe-motors",
@@ -10,7 +297,7 @@ window.DEFAULT_PLACES = [
     categoryType: "mechanical",
     address: "Av. Facundo Zuviría 5240, Santa Fe",
     phone: "+54 342 460-8812",
-    website: "", // Sin web = Oportunidad
+    website: "",
     rating: 4.8,
     reviewCount: 34,
     openStatus: "Abierto · Cierra 18:30",
@@ -117,7 +404,7 @@ window.DEFAULT_PLACES = [
     }
   },
 
-  // --- ODONTOLOGÍA ---
+  // --- ODONTOLOGÍA & SALUD DENTAL ---
   {
     id: "sf-cio-odonto",
     name: "Centro Integral en Odontología (CIO)",
@@ -125,15 +412,14 @@ window.DEFAULT_PLACES = [
     categoryType: "dental",
     address: "Mariano Comas 2650, Santa Fe",
     phone: "+54 342 455-8921",
-    website: "", // Sin web = Oportunidad
+    website: "",
     rating: 5.0,
     reviewCount: 4,
-    openStatus: "Cerrado · Abre lunes 9:00 a.m.",
+    openStatus: "Abierto · Cierra 18:00",
     lat: -31.6315,
     lng: -60.7025,
     photos: [
-      "https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=600&auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?w=600&auto=format&fit=crop&q=80"
+      "https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=600&auto=format&fit=crop&q=80"
     ],
     googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Centro+Integral+en+Odontologia+Santa+Fe",
     visitStatus: "pending",
@@ -144,228 +430,28 @@ window.DEFAULT_PLACES = [
       hasWebsite: false,
       lowReviews: true,
       unclaimedProfile: false,
-      hook: "Tienen calificación perfecta (5.0) pero solo 4 reseñas y NO tienen sitio web oficial. Están perdiendo pacientes frente a consultorios con más presencia en Google Maps."
-    }
-  },
-  {
-    id: "sf-cirugia-bucomax",
-    name: "Centro de Cirugía Bucomaxilofacial e Implantes",
-    category: "Cirugía Odontológica",
-    categoryType: "dental",
-    address: "San Jerónimo 3140, Santa Fe",
-    phone: "+54 342 452-1134",
-    website: "https://odontologiasantafe.com.ar",
-    rating: 4.8,
-    reviewCount: 22,
-    openStatus: "Abierto · Cierra 19:30",
-    lat: -31.6365,
-    lng: -60.7018,
-    photos: [
-      "https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?w=600&auto=format&fit=crop&q=80"
-    ],
-    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Centro+Cirugia+Bucomaxilofacial+San+Jeronimo+Santa+Fe",
-    visitStatus: "pending",
-    contactName: "",
-    contactPhone: "",
-    notes: "",
-    auditSummary: {
-      hasWebsite: true,
-      lowReviews: false,
-      unclaimedProfile: false,
-      hook: "Tienen sitio web pero sin canal de mensajería rápida ni optimización para búsqueda local de urgencias dentales."
+      hook: "Calificación perfecta (5.0) pero solo 4 reseñas y SIN sitio web oficial. Oportunidad en captación de pacientes."
     }
   },
 
-  // --- CONSULTORIOS MÉDICOS / SANATORIOS ---
+  // --- FERRETERÍAS & CONSTRUCCIÓN ---
   {
-    id: "sf-sanatorio-diag",
-    name: "Sanatorio Diagnóstico",
-    category: "Sanatorio / Centro Médico",
-    categoryType: "medical",
-    address: "25 de Mayo 3240, Santa Fe",
-    phone: "+54 342 457-3300",
-    website: "https://sanatoriodiagnostico.com.ar",
-    rating: 4.1,
-    reviewCount: 148,
-    openStatus: "Abierto 24 horas",
-    lat: -31.6372,
-    lng: -60.7001,
-    photos: [
-      "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=600&auto=format&fit=crop&q=80"
-    ],
-    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Sanatorio+Diagnostico+Santa+Fe",
-    visitStatus: "pending",
-    contactName: "",
-    contactPhone: "",
-    notes: "",
-    auditSummary: {
-      hasWebsite: true,
-      lowReviews: false,
-      unclaimedProfile: false,
-      hook: "Mucho tráfico de pacientes. Frecuentes consultas en reseñas sobre líneas ocupadas para solicitar turnos."
-    }
-  },
-  {
-    id: "sf-med-constituyentes",
-    name: "Centro Médico Constituyentes",
-    category: "Consultorios Médicos Múltiples",
-    categoryType: "medical",
-    address: "Obispo Gelabert 2840, Santa Fe",
-    phone: "+54 342 453-7722",
-    website: "", // Sin web
-    rating: 4.3,
-    reviewCount: 19,
-    openStatus: "Abierto · Cierra 20:00",
-    lat: -31.6358,
-    lng: -60.7032,
-    photos: [
-      "https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=600&auto=format&fit=crop&q=80"
-    ],
-    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Centro+Medico+Constituyentes+Santa+Fe",
-    visitStatus: "pending",
-    contactName: "",
-    contactPhone: "",
-    notes: "",
-    auditSummary: {
-      hasWebsite: false,
-      lowReviews: true,
-      unclaimedProfile: false,
-      hook: "Sin sitio web y con horarios incompletos en Google Maps. Múltiples profesionales compartiendo recepción."
-    }
-  },
-  {
-    id: "sf-vital-centro",
-    name: "Vital Centro Médico",
-    category: "Consultorio Médico y Diagnóstico",
-    categoryType: "medical",
-    address: "San Martín 3120, Santa Fe",
-    phone: "+54 342 456-0200",
-    website: "",
-    rating: 4.5,
-    reviewCount: 12,
-    openStatus: "Abierto · Cierra 19:00",
-    lat: -31.6380,
-    lng: -60.6990,
-    photos: [
-      "https://images.unsplash.com/photo-1516549655169-df83a0774514?w=600&auto=format&fit=crop&q=80"
-    ],
-    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Vital+Centro+Medico+San+Martin+Santa+Fe",
-    visitStatus: "pending",
-    contactName: "",
-    contactPhone: "",
-    notes: "",
-    auditSummary: {
-      hasWebsite: false,
-      lowReviews: true,
-      unclaimedProfile: false,
-      hook: "Ubicación privilegiada en pleno centro sobre San Martín pero con baja presencia digital y pocas reseñas."
-    }
-  },
-
-  // --- ESTÉTICA / BELLEZA ---
-  {
-    id: "sf-belkys-estetica",
-    name: "Belkys - Centro Integral de Estética",
-    category: "Estética y Cosmetología",
-    categoryType: "aesthetic",
-    address: "San Jerónimo 3420, Santa Fe",
-    phone: "+54 342 458-1200",
-    website: "https://instagram.com/belkysestetica",
-    rating: 4.9,
-    reviewCount: 31,
-    openStatus: "Abierto · Cierra 19:00",
-    lat: -31.6340,
-    lng: -60.7015,
-    photos: [
-      "https://images.unsplash.com/photo-1560750588-73207b1ef5b8?w=600&auto=format&fit=crop&q=80"
-    ],
-    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Belkys+Centro+Integral+Estetica+Santa+Fe",
-    visitStatus: "pending",
-    contactName: "",
-    contactPhone: "",
-    notes: "",
-    auditSummary: {
-      hasWebsite: false,
-      lowReviews: false,
-      unclaimedProfile: false,
-      hook: "Derivan tráfico a Instagram en lugar de tener ficha optimizada en Google Business con agendamiento directo."
-    }
-  },
-  {
-    id: "sf-sm-estetica",
-    name: "SM Estética Integral & Spa",
-    category: "Centro de Estética",
-    categoryType: "aesthetic",
-    address: "1 de Mayo 3260, Santa Fe",
-    phone: "+54 342 452-9011",
+    id: "sf-ferret-central",
+    name: "Ferretería Industrial Santa Fe Central",
+    category: "Ferretería Industrial / Maquinarias",
+    categoryType: "hardware",
+    address: "Av. Rivadavia 3200, Santa Fe",
+    phone: "+54 342 456-1122",
     website: "",
     rating: 4.6,
-    reviewCount: 15,
+    reviewCount: 42,
     openStatus: "Abierto · Cierra 18:30",
-    lat: -31.6375,
-    lng: -60.7050,
-    photos: [
-      "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=600&auto=format&fit=crop&q=80"
-    ],
-    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=SM+Estetica+Integral+1+de+Mayo+Santa+Fe",
-    visitStatus: "pending",
-    contactName: "",
-    contactPhone: "",
-    notes: "",
-    auditSummary: {
-      hasWebsite: false,
-      lowReviews: true,
-      unclaimedProfile: false,
-      hook: "Faltan fotos de tratamientos y lista de precios/servicios en su perfil de Google."
-    }
-  },
-  {
-    id: "sf-calvo-estetica",
-    name: "Calvo Estética & Cirugía Plástica",
-    category: "Estética Médica y Plástica",
-    categoryType: "aesthetic",
-    address: "Bv. Pellegrini 2640, Santa Fe",
-    phone: "+54 342 455-6677",
-    website: "https://calvoestetica.com.ar",
-    rating: 4.8,
-    reviewCount: 44,
-    openStatus: "Abierto · Cierra 20:00",
-    lat: -31.6335,
-    lng: -60.6975,
-    photos: [
-      "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600&auto=format&fit=crop&q=80"
-    ],
-    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Calvo+Estetica+Bv+Pellegrini+Santa+Fe",
-    visitStatus: "pending",
-    contactName: "",
-    contactPhone: "",
-    notes: "",
-    auditSummary: {
-      hasWebsite: true,
-      lowReviews: false,
-      unclaimedProfile: false,
-      hook: "Tratamientos de alto valor en Bulevar. Clave mejorar la conversión de consultas a citas presenciales."
-    }
-  },
-
-  // --- FERRETERÍAS / COMERCIO INDUSTRIAL ---
-  {
-    id: "sf-ferr-industrial",
-    name: "Ferretería Industrial Santa Fe",
-    category: "Ferretería Industrial & Maquinaria",
-    categoryType: "hardware",
-    address: "Av. Facundo Zuviría 4520, Santa Fe",
-    phone: "+54 342 489-1020",
-    website: "", // Sin web
-    rating: 4.4,
-    reviewCount: 65,
-    openStatus: "Abierto · Cierra 18:00",
-    lat: -31.6240,
-    lng: -60.7070,
+    lat: -31.6345,
+    lng: -60.7010,
     photos: [
       "https://images.unsplash.com/photo-1581783342308-f792dbdd27c5?w=600&auto=format&fit=crop&q=80"
     ],
-    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Ferreteria+Industrial+Facundo+Zuviria+Santa+Fe",
+    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Ferreteria+Industrial+Rivadavia+Santa+Fe",
     visitStatus: "pending",
     contactName: "",
     contactPhone: "",
@@ -374,71 +460,15 @@ window.DEFAULT_PLACES = [
       hasWebsite: false,
       lowReviews: false,
       unclaimedProfile: false,
-      hook: "Gran volumen de mostrador pero sin catálogo digital ni canal de cotización rápida."
-    }
-  },
-  {
-    id: "sf-bulonera-freyre",
-    name: "Bulonera Santa Fe & Herramientas",
-    category: "Bulonería y Ferretería",
-    categoryType: "hardware",
-    address: "Av. Gobernador Freyre 2940, Santa Fe",
-    phone: "+54 342 455-4422",
-    website: "",
-    rating: 4.6,
-    reviewCount: 48,
-    openStatus: "Abierto · Cierra 19:00",
-    lat: -31.6360,
-    lng: -60.7110,
-    photos: [
-      "https://images.unsplash.com/photo-1504148455328-c376907d081c?w=600&auto=format&fit=crop&q=80"
-    ],
-    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Bulonera+Santa+Fe+Av+Freyre",
-    visitStatus: "pending",
-    contactName: "",
-    contactPhone: "",
-    notes: "",
-    auditSummary: {
-      hasWebsite: false,
-      lowReviews: false,
-      unclaimedProfile: false,
-      hook: "Negocio estratégico sobre Av. Freyre sin presencia web ni fotos actualizadas de su stock."
-    }
-  },
-  {
-    id: "sf-ferr-don-pedro",
-    name: "Ferretería y Pinturería Don Pedro",
-    category: "Ferretería Barrial y Pinturería",
-    categoryType: "hardware",
-    address: "Bv. Pellegrini 3020, Santa Fe",
-    phone: "+54 342 456-7890",
-    website: "",
-    rating: 4.2,
-    reviewCount: 18,
-    openStatus: "Abierto · Cierra 19:30",
-    lat: -31.6345,
-    lng: -60.7060,
-    photos: [
-      "https://images.unsplash.com/photo-1581244277943-fe4a9c777189?w=600&auto=format&fit=crop&q=80"
-    ],
-    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Ferreteria+Don+Pedro+Bv+Pellegrini+Santa+Fe",
-    visitStatus: "pending",
-    contactName: "",
-    contactPhone: "",
-    notes: "",
-    auditSummary: {
-      hasWebsite: false,
-      lowReviews: true,
-      unclaimedProfile: false,
-      hook: "Pocas reseñas y horarios de siesta no especificados en Google Maps."
+      hook: "Ferretería comercial consolidada en el centro pero sin catálogo digital ni lista de precios online."
     }
   }
 ];
 
 window.STORAGE_KEYS = {
-  PLACES: "geoprospector_places_v3",
-  CONFIG: "geoprospector_config_v3",
-  SAVED_SEARCHES: "geoprospector_searches_v3"
+  PLACES: "geoprospector_places_v5",
+  CONFIG: "geoprospector_config_v5",
+  SAVED_SEARCHES: "geoprospector_searches_v5"
 };
 
 window.getStoredPlaces = function() {
@@ -448,7 +478,19 @@ window.getStoredPlaces = function() {
       localStorage.setItem(window.STORAGE_KEYS.PLACES, JSON.stringify(window.DEFAULT_PLACES));
       return window.DEFAULT_PLACES;
     }
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    // Asegurar que si la base guardada tiene menos lugares o no tiene las nuevas categorías, se incorporen
+    if (!Array.isArray(parsed) || parsed.length < window.DEFAULT_PLACES.length) {
+      const merged = [...parsed];
+      window.DEFAULT_PLACES.forEach(def => {
+        if (!merged.some(m => m.id === def.id || m.name.toLowerCase() === def.name.toLowerCase())) {
+          merged.push(def);
+        }
+      });
+      localStorage.setItem(window.STORAGE_KEYS.PLACES, JSON.stringify(merged));
+      return merged;
+    }
+    return parsed;
   } catch (e) {
     console.error("Error leyendo lugares de localStorage:", e);
     return window.DEFAULT_PLACES;
@@ -464,10 +506,34 @@ window.saveStoredPlaces = function(places) {
 };
 
 window.getStoredConfig = function() {
-  try {
-    const raw = localStorage.getItem(window.STORAGE_KEYS.CONFIG);
-    if (raw) return JSON.parse(raw);
-  } catch (e) {}
+  const possibleKeys = [
+    window.STORAGE_KEYS.CONFIG,
+    "geoprospector_config_v5",
+    "geoprospector_config_v4",
+    "geoprospector_config_v3",
+    "geoprospector_config_v2",
+    "geoprospector_config",
+    "google_maps_api_key"
+  ];
+  for (const k of possibleKeys) {
+    try {
+      const raw = localStorage.getItem(k);
+      if (raw) {
+        if (raw.startsWith('{')) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.googleMapsApiKey && parsed.googleMapsApiKey.trim().length > 5) {
+            return parsed;
+          }
+        } else if (raw.trim().length > 10) {
+          return {
+            googleMapsApiKey: raw.trim(),
+            defaultCity: "Santa Fe, Argentina",
+            defaultCoords: { lat: -31.635, lng: -60.702 }
+          };
+        }
+      }
+    } catch (e) {}
+  }
   return {
     googleMapsApiKey: "",
     defaultCity: "Santa Fe, Argentina",
