@@ -97,11 +97,9 @@ import * as fb from './firebase-service.js';
       
       const cloudPlaces = await fb.fetchUserPlaces(userId);
       if (cloudPlaces && cloudPlaces.length > 0) {
-        places = cloudPlaces;
+        places = cloudPlaces.filter(p => !p.id?.startsWith('sf-') || p.notes || p.contactName || (p.visitStatus && p.visitStatus !== 'pending'));
       } else {
-        // Inicializamos con la base de Santa Fe
-        places = [...window.DEFAULT_PLACES];
-        await fb.saveUserPlacesBatch(userId, places);
+        places = [];
       }
 
       savedSearches = await fb.fetchUserSavedSearches(userId);
@@ -328,6 +326,9 @@ import * as fb from './firebase-service.js';
       });
 
       await renderGoogleMarkers();
+
+      // Centrar el mapa y solicitar ubicación GPS actual del usuario al iniciar la app
+      window.locateUserPosition({ isStartup: true });
 
       const badge = document.getElementById('engine-badge');
       if (badge) {
@@ -802,17 +803,35 @@ import * as fb from './firebase-service.js';
 
   function renderPlacesList() {
     const container = document.getElementById('places-list-container');
+    if (!container) return;
     const filtered = getFilteredPlaces();
 
     if (filtered.length === 0) {
-      container.innerHTML = `
-        <div class="p-8 text-center text-slate-400 space-y-2">
-          <p class="text-xs">No hay locales registrados para este filtro o búsqueda.</p>
-          <button onclick="window.clearActiveListFilter()" class="text-xs font-semibold text-blue-600 underline">
-            Restablecer filtros
-          </button>
-        </div>
-      `;
+      if (!activeSearchQuery && (!places || places.length === 0)) {
+        container.innerHTML = `
+          <div class="h-full min-h-[300px] flex flex-col items-center justify-center p-6 text-center text-slate-400 space-y-3 select-none">
+            <div class="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-xs">
+              <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            </div>
+            <div>
+              <p class="text-sm font-bold text-slate-800">Esperando búsqueda</p>
+              <p class="text-xs text-slate-500 mt-1 max-w-[240px] mx-auto leading-relaxed">
+                Ingresa un rubro comercial arriba o pulsa <b>"Buscar en esta zona"</b> en el mapa para explorar clientes.
+              </p>
+            </div>
+          </div>
+        `;
+      } else {
+        container.innerHTML = `
+          <div class="p-8 text-center text-slate-400 space-y-2 select-none">
+            <p class="text-xs font-semibold text-slate-600">No hay locales registrados para "${activeSearchQuery || 'este filtro'}".</p>
+            <p class="text-[11px] text-slate-400">Prueba con otro rubro o busca en otra zona del mapa.</p>
+            <button onclick="window.clearActiveListFilter()" class="mt-2 text-xs font-semibold text-blue-600 underline">
+              Restablecer filtros
+            </button>
+          </div>
+        `;
+      }
       return;
     }
 
@@ -1452,7 +1471,11 @@ import * as fb from './firebase-service.js';
 
     const el = document.getElementById('stats-summary');
     if (el) {
-      el.innerText = `${total} locales | ${interested} interesados | ${closed} cerrados`;
+      if (total === 0) {
+        el.innerText = 'Esperando búsqueda...';
+      } else {
+        el.innerText = `${total} locales | ${interested} interesados | ${closed} cerrados`;
+      }
     }
 
     // Actualizar contadores en la barra inferior móvil
@@ -1466,18 +1489,22 @@ import * as fb from './firebase-service.js';
   // ==========================================
   // GPS EN VIVO (GOOGLE MAPS)
   // ==========================================
-  window.locateUserPosition = function() {
+  window.locateUserPosition = function(options = {}) {
+    const isStartup = Boolean(options && options.isStartup);
+
     if (!navigator.geolocation) {
-      alert("Geolocalización no disponible en este dispositivo.");
+      if (!isStartup) {
+        alert("Geolocalización no disponible en este dispositivo o navegador.");
+      }
       return;
     }
 
-    const btn = document.getElementById('btn-gps');
-    btn.classList.add('animate-pulse', 'text-blue-600');
+    const btn = document.getElementById('btn-fab-gps') || document.getElementById('btn-gps');
+    if (btn) btn.classList.add('animate-pulse', 'text-blue-600');
 
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
-        btn.classList.remove('animate-pulse', 'text-blue-600');
+        if (btn) btn.classList.remove('animate-pulse', 'text-blue-600');
         const userLat = pos.coords.latitude;
         const userLng = pos.coords.longitude;
 
@@ -1486,19 +1513,19 @@ import * as fb from './firebase-service.js';
           googleMapInstance.setZoom(16);
 
           try {
-            const { AdvancedMarkerElement, PinElement } = await getGoogleMapsLibrary("marker");
+            const { AdvancedMarkerElement } = await getGoogleMapsLibrary("marker");
             if (!userLocationMarker) {
-              const userPin = new PinElement({
-                background: '#2563eb',
-                borderColor: '#ffffff',
-                glyphColor: '#ffffff',
-                scale: 0.95
-              });
+              const pulsePin = document.createElement('div');
+              pulsePin.className = 'relative flex items-center justify-center pointer-events-none';
+              pulsePin.innerHTML = `
+                <span class="absolute w-8 h-8 rounded-full bg-blue-500/40 animate-ping"></span>
+                <span class="w-4 h-4 rounded-full bg-blue-600 border-2 border-white shadow-lg ring-2 ring-blue-600/30"></span>
+              `;
               userLocationMarker = new AdvancedMarkerElement({
                 position: { lat: userLat, lng: userLng },
                 map: googleMapInstance,
-                title: "Estás aquí",
-                content: userPin
+                title: "Tu ubicación actual",
+                content: pulsePin
               });
             } else {
               userLocationMarker.position = { lat: userLat, lng: userLng };
@@ -1508,7 +1535,7 @@ import * as fb from './firebase-service.js';
               userLocationMarker = new google.maps.Marker({
                 position: { lat: userLat, lng: userLng },
                 map: googleMapInstance,
-                title: "Estás aquí"
+                title: "Tu ubicación actual"
               });
             } else {
               userLocationMarker.setPosition({ lat: userLat, lng: userLng });
@@ -1517,10 +1544,13 @@ import * as fb from './firebase-service.js';
         }
       },
       (err) => {
-        btn.classList.remove('animate-pulse', 'text-blue-600');
-        alert("Para usar el GPS, activa la ubicación en tu dispositivo.");
+        if (btn) btn.classList.remove('animate-pulse', 'text-blue-600');
+        console.warn("GPS error o permiso denegado:", err);
+        if (!isStartup) {
+          alert("Para ubicarte en el mapa, habilita los permisos de ubicación o activa el GPS en tu dispositivo.");
+        }
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 }
     );
   };
 
@@ -1728,10 +1758,10 @@ import * as fb from './firebase-service.js';
     link.click();
   }
 
-  // Restablecer base inicial
+  // Limpiar lista de prospectos
   window.resetToDefaultPlaces = async function() {
-    if (confirm("¿Deseas restablecer los locales a la lista inicial de Santa Fe? Esto sobreescribirá tus notas actuales.")) {
-      places = [...window.DEFAULT_PLACES];
+    if (confirm("¿Deseas vaciar la lista de comercios y reiniciar las búsquedas?")) {
+      places = [];
       if (currentUser) {
         await fb.saveUserPlacesBatch(currentUser.uid, places);
       }
@@ -1739,7 +1769,7 @@ import * as fb from './firebase-service.js';
       await renderCurrentMapMarkers();
       renderPlacesList();
       updateStatsCounter();
-      alert("Base restablecida con éxito.");
+      alert("Lista vaciada con éxito.");
     }
   };
 
