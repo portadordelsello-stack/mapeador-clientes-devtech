@@ -1,0 +1,57 @@
+{
+  "entities": {
+    "UserProfile": {
+      "collection": "users",
+      "fields": {
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "timestamp" }
+      }
+    },
+    "Place": {
+      "collection": "users/{userId}/places",
+      "fields": {
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "categoryType": { "type": "string" },
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "website": { "type": "string" },
+        "rating": { "type": "number" },
+        "reviewCount": { "type": "number" },
+        "openStatus": { "type": "string" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "photos": { "type": "array" },
+        "googleMapsUrl": { "type": "string" },
+        "visitStatus": { "type": "string" },
+        "contactName": { "type": "string" },
+        "contactPhone": { "type": "string" },
+        "notes": { "type": "string" },
+        "auditSummary": { "type": "map" },
+        "updatedAt": { "type": "number" }
+      }
+    },
+    "SavedSearch": {
+      "collection": "users/{userId}/saved_searches",
+      "fields": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "query": { "type": "string" },
+        "category": { "type": "string" },
+        "placeIds": { "type": "array" },
+        "placesCount": { "type": "number" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      }
+    },
+    "UserConfig": {
+      "collection": "users/{userId}/settings",
+      "fields": {
+        "googleMapsApiKey": { "type": "string" },
+        "updatedAt": { "type": "number" }
+      }
+    }
+  }
+}

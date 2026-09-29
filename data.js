@@ -1,7 +1,122 @@
-// Base de datos inicial para Santa Fe (Precargada para funcionar de inmediato sin API Keys)
-// Permite comenzar a prospectar consultorios y ferreterías de inmediato
+// Base de datos inicial para Santa Fe (Precargada para funcionar de inmediato)
+// Incluye talleres mecánicos, odontología, medicina, estética y ferreterías
 
 window.DEFAULT_PLACES = [
+  // --- TALLERES MECÁNICOS & AUTOMOTRIZ ---
+  {
+    id: "sf-taller-santafe-motors",
+    name: "Taller Mecánico Santa Fe Motors - Inyección & Frenos",
+    category: "Taller Mecánico / Electricidad del Automotor",
+    categoryType: "mechanical",
+    address: "Av. Facundo Zuviría 5240, Santa Fe",
+    phone: "+54 342 460-8812",
+    website: "", // Sin web = Oportunidad
+    rating: 4.8,
+    reviewCount: 34,
+    openStatus: "Abierto · Cierra 18:30",
+    lat: -31.6210,
+    lng: -60.7085,
+    photos: [
+      "https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=600&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600&auto=format&fit=crop&q=80"
+    ],
+    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Taller+Mecanico+Facundo+Zuviria+Santa+Fe",
+    visitStatus: "pending",
+    contactName: "Mariano (Jefe de Taller)",
+    contactPhone: "+54 342 460-8812",
+    notes: "",
+    auditSummary: {
+      hasWebsite: false,
+      lowReviews: false,
+      unclaimedProfile: false,
+      hook: "Taller con excelente reputación (4.8) sobre Av. Facundo Zuviría pero sin sitio web ni catálogo de servicios de diagnóstico computarizado."
+    }
+  },
+  {
+    id: "sf-taller-candioti-garage",
+    name: "Candioti Garage & Mecánica Integral",
+    category: "Taller Mecánico Multimarca",
+    categoryType: "mechanical",
+    address: "Iturraspe 1950, Candioti Sur, Santa Fe",
+    phone: "+54 342 455-7730",
+    website: "",
+    rating: 4.6,
+    reviewCount: 14,
+    openStatus: "Abierto · Cierra 19:00",
+    lat: -31.6350,
+    lng: -60.6910,
+    photos: [
+      "https://images.unsplash.com/photo-1613214149922-f1809c99b414?w=600&auto=format&fit=crop&q=80"
+    ],
+    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Mecanica+Integral+Iturraspe+Santa+Fe",
+    visitStatus: "pending",
+    contactName: "",
+    contactPhone: "",
+    notes: "",
+    auditSummary: {
+      hasWebsite: false,
+      lowReviews: true,
+      unclaimedProfile: false,
+      hook: "Ubicado en zona de alto poder adquisitivo pero con solo 14 reseñas y sin botón de WhatsApp en su perfil de Google Maps."
+    }
+  },
+  {
+    id: "sf-taller-diesel-freyre",
+    name: "Inyección Diesel & Nafta Freyre",
+    category: "Mecánica Pesada y Diagnóstico Diesel",
+    categoryType: "mechanical",
+    address: "Av. Gobernador Freyre 3420, Santa Fe",
+    phone: "+54 342 453-6622",
+    website: "https://dieselfreyre.com.ar",
+    rating: 4.4,
+    reviewCount: 52,
+    openStatus: "Abierto · Cierra 18:00",
+    lat: -31.6330,
+    lng: -60.7120,
+    photos: [
+      "https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?w=600&auto=format&fit=crop&q=80"
+    ],
+    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Inyeccion+Diesel+Av+Freyre+Santa+Fe",
+    visitStatus: "pending",
+    contactName: "Roberto",
+    contactPhone: "",
+    notes: "",
+    auditSummary: {
+      hasWebsite: true,
+      lowReviews: false,
+      unclaimedProfile: false,
+      hook: "Gran flujo de camionetas y utilitarios comerciales. Necesitan canal ágil de turnos rápidos."
+    }
+  },
+  {
+    id: "sf-taller-suspension-aristobulo",
+    name: "Alineación, Balanceo & Suspensión del Norte",
+    category: "Gomería y Tren Delantero",
+    categoryType: "mechanical",
+    address: "Av. Aristóbulo del Valle 6120, Santa Fe",
+    phone: "+54 342 489-3344",
+    website: "",
+    rating: 4.7,
+    reviewCount: 28,
+    openStatus: "Abierto · Cierra 19:30",
+    lat: -31.6180,
+    lng: -60.6980,
+    photos: [
+      "https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=600&auto=format&fit=crop&q=80"
+    ],
+    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Alineacion+Aristobulo+del+Valle+Santa+Fe",
+    visitStatus: "pending",
+    contactName: "",
+    contactPhone: "",
+    notes: "",
+    auditSummary: {
+      hasWebsite: false,
+      lowReviews: false,
+      unclaimedProfile: false,
+      hook: "Punto clave sobre Aristóbulo del Valle pero sin fotos del equipamiento de alineación computarizada."
+    }
+  },
+
   // --- ODONTOLOGÍA ---
   {
     id: "sf-cio-odonto",
@@ -146,34 +261,6 @@ window.DEFAULT_PLACES = [
       hook: "Ubicación privilegiada en pleno centro sobre San Martín pero con baja presencia digital y pocas reseñas."
     }
   },
-  {
-    id: "sf-deportmed",
-    name: "Clínica DeportMed - Traumatología & Kinesiología",
-    category: "Kinesiología y Medicina Deportiva",
-    categoryType: "medical",
-    address: "Suipacha 2750, Santa Fe",
-    phone: "+54 342 454-9988",
-    website: "https://deportmed.com.ar",
-    rating: 4.7,
-    reviewCount: 38,
-    openStatus: "Abierto · Cierra 20:30",
-    lat: -31.6395,
-    lng: -60.7040,
-    photos: [
-      "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=600&auto=format&fit=crop&q=80"
-    ],
-    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Clinica+DeportMed+Suipacha+Santa+Fe",
-    visitStatus: "pending",
-    contactName: "",
-    contactPhone: "",
-    notes: "",
-    auditSummary: {
-      hasWebsite: true,
-      lowReviews: false,
-      unclaimedProfile: false,
-      hook: "Pacientes recurrentes de rehabilitación deportiva y kinesiología."
-    }
-  },
 
   // --- ESTÉTICA / BELLEZA ---
   {
@@ -258,34 +345,6 @@ window.DEFAULT_PLACES = [
       lowReviews: false,
       unclaimedProfile: false,
       hook: "Tratamientos de alto valor en Bulevar. Clave mejorar la conversión de consultas a citas presenciales."
-    }
-  },
-  {
-    id: "sf-harmony-beauty",
-    name: "Harmony Beauty & Lash Studio",
-    category: "Belleza y Pestañas / Cejas",
-    categoryType: "aesthetic",
-    address: "Sarmiento 3510, Candioti Norte, Santa Fe",
-    phone: "+54 342 459-3312",
-    website: "",
-    rating: 5.0,
-    reviewCount: 8,
-    openStatus: "Abierto · Cierra 19:30",
-    lat: -31.6320,
-    lng: -60.6930,
-    photos: [
-      "https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=600&auto=format&fit=crop&q=80"
-    ],
-    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Harmony+Beauty+Santa+Fe",
-    visitStatus: "pending",
-    contactName: "",
-    contactPhone: "",
-    notes: "",
-    auditSummary: {
-      hasWebsite: false,
-      lowReviews: true,
-      unclaimedProfile: false,
-      hook: "Barrio Candioti con clientes de alto poder adquisitivo pero solo 8 reseñas en Google Maps."
     }
   },
 
@@ -373,41 +432,13 @@ window.DEFAULT_PLACES = [
       unclaimedProfile: false,
       hook: "Pocas reseñas y horarios de siesta no especificados en Google Maps."
     }
-  },
-  {
-    id: "sf-ferr-candioti",
-    name: "Ferretería Candioti",
-    category: "Ferretería y Sanitarios",
-    categoryType: "hardware",
-    address: "Güemes 3410, Candioti Norte, Santa Fe",
-    phone: "+54 342 453-2211",
-    website: "",
-    rating: 4.7,
-    reviewCount: 29,
-    openStatus: "Abierto · Cierra 19:00",
-    lat: -31.6310,
-    lng: -60.6920,
-    photos: [
-      "https://images.unsplash.com/photo-1530124566582-a618bc2615dc?w=600&auto=format&fit=crop&q=80"
-    ],
-    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Ferreteria+Candioti+Santa+Fe",
-    visitStatus: "pending",
-    contactName: "",
-    contactPhone: "",
-    notes: "",
-    auditSummary: {
-      hasWebsite: false,
-      lowReviews: false,
-      unclaimedProfile: false,
-      hook: "Ferretería de barrio con clientes constantes pero sin ficha verificada."
-    }
   }
 ];
 
-// Helper para guardar / cargar en localStorage
 window.STORAGE_KEYS = {
-  PLACES: "geoprospector_places_v2",
-  CONFIG: "geoprospector_config_v2"
+  PLACES: "geoprospector_places_v3",
+  CONFIG: "geoprospector_config_v3",
+  SAVED_SEARCHES: "geoprospector_searches_v3"
 };
 
 window.getStoredPlaces = function() {
