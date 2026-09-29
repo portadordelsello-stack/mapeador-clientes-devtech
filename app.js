@@ -210,6 +210,11 @@ import * as fb from './firebase-service.js';
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
+    // Cerrar ficha al hacer clic en cualquier parte libre del mapa
+    map.on('click', () => {
+      window.closePlaceDrawer();
+    });
+
     renderLeafletMarkers();
   }
 
@@ -302,6 +307,11 @@ import * as fb from './firebase-service.js';
         mapTypeControl: false,
         streetViewControl: false,
         gestureHandling: 'greedy'
+      });
+
+      // Cerrar ficha al hacer clic en el mapa de Google
+      googleMapInstance.addListener('click', () => {
+        window.closePlaceDrawer();
       });
 
       await renderGoogleMarkers();
@@ -927,8 +937,17 @@ import * as fb from './firebase-service.js';
   function openPlaceDrawer(place) {
     selectedPlace = place;
     const drawer = document.getElementById('place-drawer');
-    drawer.classList.remove('translate-y-full', 'pointer-events-none', 'opacity-0');
-    drawer.classList.add('translate-y-0', 'opacity-100');
+    if (drawer) {
+      drawer.style.transform = '';
+      drawer.classList.remove('translate-y-full', 'pointer-events-none', 'opacity-0');
+      drawer.classList.add('translate-y-0', 'opacity-100');
+    }
+
+    const backdrop = document.getElementById('place-drawer-backdrop');
+    if (backdrop) {
+      backdrop.classList.remove('hidden', 'pointer-events-none', 'opacity-0');
+      backdrop.classList.add('opacity-100');
+    }
 
     document.getElementById('drawer-title').innerText = place.name;
     document.getElementById('drawer-category').innerText = place.category;
@@ -1019,37 +1038,64 @@ import * as fb from './firebase-service.js';
 
   window.closePlaceDrawer = function() {
     const drawer = document.getElementById('place-drawer');
-    drawer.classList.remove('translate-y-0', 'opacity-100');
-    drawer.classList.add('translate-y-full', 'opacity-0', 'pointer-events-none');
+    if (drawer) {
+      drawer.style.transform = '';
+      drawer.classList.remove('translate-y-0', 'opacity-100');
+      drawer.classList.add('translate-y-full', 'opacity-0', 'pointer-events-none');
+    }
+    const backdrop = document.getElementById('place-drawer-backdrop');
+    if (backdrop) {
+      backdrop.classList.remove('opacity-100');
+      backdrop.classList.add('opacity-0', 'pointer-events-none');
+      setTimeout(() => {
+        if (backdrop && backdrop.classList.contains('opacity-0')) {
+          backdrop.classList.add('hidden');
+        }
+      }, 250);
+    }
     selectedPlace = null;
   };
 
   function initDrawerGestures() {
     const drawer = document.getElementById('place-drawer');
+    if (!drawer) return;
+
     let startY = 0;
     let currentY = 0;
+    let isDragging = false;
 
-    drawer.addEventListener('touchstart', (e) => {
-      startY = e.touches[0].clientY;
-    }, { passive: true });
+    // Solo iniciar arrastre táctil desde el header para no bloquear el scroll del contenido
+    const dragHeader = drawer.querySelector('.border-b');
 
-    drawer.addEventListener('touchmove', (e) => {
-      currentY = e.touches[0].clientY;
-      const diff = currentY - startY;
-      if (diff > 0 && drawer.scrollTop === 0) {
-        drawer.style.transform = `translateY(${diff}px)`;
-      }
-    }, { passive: true });
+    if (dragHeader) {
+      dragHeader.addEventListener('touchstart', (e) => {
+        if (e.target.closest('button') || e.target.closest('a')) return;
+        startY = e.touches[0].clientY;
+        currentY = startY;
+        isDragging = true;
+      }, { passive: true });
 
-    drawer.addEventListener('touchend', () => {
-      const diff = currentY - startY;
-      drawer.style.transform = '';
-      if (diff > 120) {
-        window.closePlaceDrawer();
-      }
-      startY = 0;
-      currentY = 0;
-    });
+      dragHeader.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        currentY = e.touches[0].clientY;
+        const diff = currentY - startY;
+        if (diff > 0) {
+          drawer.style.transform = `translateY(${diff}px)`;
+        }
+      }, { passive: true });
+
+      dragHeader.addEventListener('touchend', () => {
+        if (!isDragging) return;
+        isDragging = false;
+        const diff = currentY - startY;
+        drawer.style.transform = '';
+        if (diff > 80) {
+          window.closePlaceDrawer();
+        }
+        startY = 0;
+        currentY = 0;
+      });
+    }
   }
 
   // ==========================================
@@ -1230,6 +1276,16 @@ import * as fb from './firebase-service.js';
         }
       });
     }
+
+    // Cerrar ficha y modales con la tecla Escape
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        window.closePlaceDrawer();
+        window.closeSavedSearchesModal();
+        window.closeSettingsModal();
+        window.closeSaveSearchDialog();
+      }
+    });
   }
 
   // ==========================================
