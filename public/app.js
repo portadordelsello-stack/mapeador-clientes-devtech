@@ -1593,6 +1593,18 @@ import * as fb from './firebase-service.js';
       }
     }
 
+    // Mostrar u ocultar el botón "Limpiar historial"
+    const btnClear = document.getElementById('btn-clear-history');
+    if (btnClear) {
+      if (total > 0) {
+        btnClear.classList.remove('hidden');
+        btnClear.classList.add('inline-flex');
+      } else {
+        btnClear.classList.add('hidden');
+        btnClear.classList.remove('inline-flex');
+      }
+    }
+
     // Actualizar contadores en la barra inferior móvil
     const navPlaces = document.getElementById('nav-places-count');
     if (navPlaces) navPlaces.innerText = total;
@@ -1600,6 +1612,55 @@ import * as fb from './firebase-service.js';
     const navSaved = document.getElementById('nav-saved-count');
     if (navSaved) navSaved.innerText = savedSearches.length;
   }
+
+  // ==========================================
+  // LIMPIAR HISTORIAL DE BÚSQUEDAS / LOCALES
+  // ==========================================
+  window.clearSearchHistory = async function() {
+    if (!places || places.length === 0) return;
+
+    if (confirm("¿Deseas limpiar el historial de búsquedas y dejar el panel vacío?")) {
+      // 1. Vaciar locales en memoria
+      places = [];
+      activeSearchQuery = '';
+      activeSavedSearchId = null;
+      activeSavedSearchName = '';
+
+      // 2. Limpiar input del buscador y ocultar banner de búsqueda
+      const searchInput = document.getElementById('search-query-input');
+      if (searchInput) searchInput.value = '';
+      hideActiveListBanner();
+
+      // 3. Cerrar ficha si estaba abierta
+      window.closePlaceDrawer();
+
+      // 4. Limpiar marcadores del mapa (manteniendo la ubicación GPS del usuario)
+      if (markers) {
+        Object.values(markers).forEach(m => {
+          if (m.map) m.map = null;
+          else if (m.setMap) m.setMap(null);
+        });
+        markers = {};
+      }
+
+      // 5. Guardar base vacía en localStorage
+      window.saveStoredPlaces([]);
+
+      // 6. Si está conectado a Firebase, limpiar la colección de locales en Firestore
+      if (currentUser) {
+        try {
+          await fb.clearAllUserPlaces(currentUser.uid);
+          updateSyncBadge(true, `Sincronizado (0 locales)`);
+        } catch (e) {
+          console.warn("Error limpiando locales en Firestore:", e);
+        }
+      }
+
+      // 7. Renderizar panel vacío ("Esperando búsqueda") y actualizar contadores
+      renderPlacesList();
+      updateStatsCounter();
+    }
+  };
 
   // ==========================================
   // GPS EN VIVO (GOOGLE MAPS)

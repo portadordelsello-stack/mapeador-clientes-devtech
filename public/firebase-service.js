@@ -179,6 +179,22 @@ export async function deleteUserPlace(userId, placeId) {
   }
 }
 
+export async function clearAllUserPlaces(userId) {
+  if (!db || !userId) return;
+  try {
+    const placesCol = collection(db, 'users', userId, 'places');
+    const snap = await getDocs(placesCol);
+    if (snap.empty) return;
+    const batch = writeBatch(db);
+    snap.forEach(d => {
+      batch.delete(d.ref);
+    });
+    await batch.commit();
+  } catch (err) {
+    console.error('Error clearing user places in Firestore:', err);
+  }
+}
+
 // ----------------------------------------------------
 // SAVED SEARCHES / LISTAS PER USER
 // ----------------------------------------------------
