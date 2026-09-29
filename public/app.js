@@ -53,15 +53,6 @@ import * as fb from './firebase-service.js';
     renderPlacesList();
     updateStatsCounter();
 
-    const config = window.getStoredConfig();
-    const apiKey = (config.googleMapsApiKey || '').trim();
-
-    if (apiKey.length > 5) {
-      await initGoogleMapsApp(apiKey);
-    } else {
-      renderMapKeySetupCard();
-    }
-
     // Conectar con Firebase Auth & Firestore
     try {
       await fb.initFirebase();
@@ -71,24 +62,61 @@ import * as fb from './firebase-service.js';
         currentUser = user;
         updateAuthHeaderUI(user);
 
-        if (user) {
-          updateSyncBadge(true, `Firebase (${user.displayName || user.email.split('@')[0]})`);
-          await loadUserCloudData(user.uid);
+        if (!user) {
+          // No hay sesión activa: Mostrar Paso 1 (Login Google) antes de cargar el sistema
+          showAuthGateModal('login');
         } else {
-          updateSyncBadge(false, "Modo Local");
-          places = window.getStoredPlaces();
-          savedSearches = getStoredLocalSearches();
-          updateSavedSearchesBadge();
-          await renderCurrentMapMarkers();
-          renderPlacesList();
-          updateStatsCounter();
+          // Usuario autenticado: Validar o pedir clave permanente de Google Maps
+          updateSyncBadge(true, `Firebase (${user.displayName || user.email.split('@')[0]})`);
+          await checkAndLoadUserPermanentApiKey(user);
         }
       });
     } catch (err) {
-      console.warn("Firebase warning (modo local activo):", err);
+      console.warn("Firebase warning (modo local):", err);
       updateSyncBadge(false, "Modo Local");
+      const config = window.getStoredConfig();
+      if (config.googleMapsApiKey && config.googleMapsApiKey.trim().length > 5) {
+        await initGoogleMapsApp(config.googleMapsApiKey.trim());
+      } else {
+        showAuthGateModal('apikey');
+      }
     }
   });
+
+  // Verificación y carga permanente de Google Maps API Key para el usuario
+  async function checkAndLoadUserPermanentApiKey(user) {
+    try {
+      const userSettings = await fb.fetchUserSettings(user.uid);
+      const localConfig = window.getStoredConfig();
+
+      let key = (userSettings && userSettings.googleMapsApiKey) || localConfig.googleMapsApiKey || '';
+      key = key.trim();
+
+      if (key && key.length > 5) {
+        // Asegurar permanencia bidireccional (Firestore <-> localStorage)
+        if (!userSettings || userSettings.googleMapsApiKey !== key) {
+          await fb.saveUserSettings(user.uid, { googleMapsApiKey: key });
+        }
+        if (localConfig.googleMapsApiKey !== key) {
+          localConfig.googleMapsApiKey = key;
+          window.saveStoredConfig(localConfig);
+        }
+
+        hideAuthGateModal();
+        await loadUserCloudData(user.uid);
+
+        if (!googleMapInstance) {
+          await initGoogleMapsApp(key);
+        }
+      } else {
+        // No tiene clave configurada: Mostrar Paso 2 (Pedir API Key)
+        showAuthGateModal('apikey', user);
+      }
+    } catch (err) {
+      console.error("Error verificando clave permanente:", err);
+      showAuthGateModal('apikey', user);
+    }
+  }
 
   // Carga de datos aislados del usuario desde Firebase Firestore
   async function loadUserCloudData(userId) {
@@ -172,16 +200,100 @@ import * as fb from './firebase-service.js';
     }
   }
 
-  window.handleGoogleLogin = async function() {
+  // ==========================================
+  // MODAL GATEWAY (AUTH & PERMANENT API KEY)
+  // ==========================================
+  function showAuthGateModal(step = 'login', user = null) {
+    const modal = document.getElementById('auth-gate-modal');
+    const stepLogin = document.getElementById('gate-step-login');
+    const stepApikey = document.getElementById('gate-step-apikey');
+    if (!modal || !stepLogin || !stepApikey) return;
+
+    if (step === 'login') {
+      stepLogin.classList.remove('hidden');
+      stepApikey.classList.add('hidden');
+    } else if (step === 'apikey') {
+      stepLogin.classList.add('hidden');
+      stepApikey.classList.remove('hidden');
+
+      const u = user || currentUser;
+      if (u) {
+        const avatar = document.getElementById('gate-user-avatar');
+        if (avatar) avatar.src = u.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.displayName || u.email)}&background=2563eb&color=fff`;
+        const name = document.getElementById('gate-user-name');
+        if (name) name.innerText = u.displayName || 'Usuario Google';
+        const email = document.getElementById('gate-user-email');
+        if (email) email.innerText = u.email || '';
+      }
+
+      const input = document.getElementById('gate-api-key-input');
+      if (input) {
+        const cfg = window.getStoredConfig();
+        if (cfg.googleMapsApiKey) input.value = cfg.googleMapsApiKey;
+      }
+    }
+
+    modal.classList.remove('hidden');
+  }
+
+  function hideAuthGateModal() {
+    const modal = document.getElementById('auth-gate-modal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  window.handleGateGoogleLogin = async function() {
+    const btnText = document.getElementById('btn-gate-google-text');
+    const orig = btnText ? btnText.innerText : 'Iniciar Sesión con Google';
+    if (btnText) btnText.innerText = "Abriendo Google...";
+
     try {
       updateSyncBadge(true, "Conectando Google...", true);
-      const user = await fb.loginWithGoogle();
-      alert(`¡Bienvenido/a, ${user.displayName || user.email}! Tus prospectos y búsquedas se sincronizarán en Firebase.`);
+      await fb.loginWithGoogle();
+      // onAuthStateChanged se encargará automáticamente de verificar y avanzar a la API key
     } catch (err) {
       console.error("Error en login Google:", err);
-      updateSyncBadge(false, "Modo Local");
       alert("No se pudo iniciar sesión con Google: " + (err.message || "Intenta nuevamente."));
+      if (btnText) btnText.innerText = orig;
     }
+  };
+
+  window.handleGateSaveApiKey = async function() {
+    const input = document.getElementById('gate-api-key-input');
+    const key = (input ? input.value : '').trim();
+
+    if (!key || key.length < 10) {
+      alert("Por favor ingresa una Google Maps API Key válida (debe tener al menos 10 caracteres).");
+      return;
+    }
+
+    const btnText = document.getElementById('btn-gate-save-key-text');
+    if (btnText) btnText.innerText = "Guardando permanentemente...";
+
+    try {
+      if (currentUser) {
+        await fb.saveUserSettings(currentUser.uid, { googleMapsApiKey: key });
+      }
+
+      const cfg = window.getStoredConfig();
+      cfg.googleMapsApiKey = key;
+      window.saveStoredConfig(cfg);
+
+      hideAuthGateModal();
+
+      if (currentUser) {
+        await loadUserCloudData(currentUser.uid);
+      }
+
+      await initGoogleMapsApp(key);
+    } catch (err) {
+      console.error("Error guardando clave permanente:", err);
+      alert("Error al guardar la clave: " + err.message);
+      if (btnText) btnText.innerText = "Guardar permanentemente y Continuar";
+    }
+  };
+
+  window.handleGoogleLogin = async function() {
+    showAuthGateModal('login');
   };
 
   window.handleGoogleLogout = async function() {
@@ -189,7 +301,10 @@ import * as fb from './firebase-service.js';
       try {
         await fb.logoutUser();
         window.closeSettingsModal();
-        alert("Sesión cerrada. Ahora estás en modo local.");
+        if (googleMapInstance) {
+          googleMapInstance = null;
+        }
+        showAuthGateModal('login');
       } catch (e) {
         console.error("Error cerrando sesión:", e);
       }
