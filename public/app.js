@@ -853,8 +853,12 @@ import * as fb from './firebase-service.js';
       // 1. Filtro de Búsqueda Guardada Específica
       if (activeSavedSearchId) {
         const saved = savedSearches.find(s => s.id === activeSavedSearchId);
-        if (saved && saved.placeIds && saved.placeIds.length > 0) {
-          if (!saved.placeIds.includes(p.id)) return false;
+        if (saved) {
+          if (saved.places && Array.isArray(saved.places) && saved.places.length > 0) {
+            if (!saved.places.some(sp => sp.id === p.id)) return false;
+          } else if (saved.placeIds && saved.placeIds.length > 0) {
+            if (!saved.placeIds.includes(p.id)) return false;
+          }
         }
       }
 
@@ -1085,6 +1089,7 @@ import * as fb from './firebase-service.js';
       category: currentFilter,
       placeIds: placeIds,
       placesCount: placeIds.length,
+      places: filtered,
       createdAt: Date.now()
     };
 
@@ -1167,13 +1172,79 @@ import * as fb from './firebase-service.js';
     const search = savedSearches.find(s => s.id === searchId);
     if (!search) return;
 
+    window.closeSavedSearchesModal();
+
+    // 1. Si la lista guardada ya tiene los locales completos (search.places), inyectarlos en places
+    if (search.places && Array.isArray(search.places) && search.places.length > 0) {
+      search.places.forEach(p => {
+        if (!places.some(existing => existing.id === p.id)) {
+          places.push(p);
+        }
+      });
+    }
+
+    // 2. Verificar cuántos locales coinciden actualmente en memoria
+    let currentMatches = places.filter(p => {
+      if (search.places && Array.isArray(search.places) && search.places.length > 0) {
+        return search.places.some(sp => sp.id === p.id);
+      }
+      return search.placeIds && search.placeIds.includes(p.id);
+    });
+
+    // 3. Si no hay locales en memoria (por ejemplo, lista previa o historial limpio):
+    if (currentMatches.length === 0) {
+      showActiveListBanner(`Cargando locales de "${search.name}"...`);
+
+      // Primero: Buscar en Firestore si el usuario está conectado
+      if (currentUser) {
+        try {
+          const cloudPlaces = await fb.fetchUserPlaces(currentUser.uid);
+          if (cloudPlaces && cloudPlaces.length > 0) {
+            const foundInCloud = cloudPlaces.filter(p => search.placeIds && search.placeIds.includes(p.id));
+            if (foundInCloud.length > 0) {
+              foundInCloud.forEach(p => {
+                if (!places.some(existing => existing.id === p.id)) {
+                  places.push(p);
+                }
+              });
+              search.places = foundInCloud;
+              currentMatches = foundInCloud;
+            }
+          }
+        } catch (e) {
+          console.warn("Error cargando locales desde Firestore:", e);
+        }
+      }
+
+      // Si aún no están en memoria (como la lista 'Dentistas' guardada antes):
+      if (currentMatches.length === 0) {
+        const queryTerm = search.query || search.name;
+        if (queryTerm) {
+          try {
+            await executeGooglePlacesSearch(queryTerm);
+            const recovered = getFilteredPlaces();
+            if (recovered.length > 0) {
+              search.places = recovered;
+              search.placeIds = recovered.map(m => m.id);
+              search.placesCount = recovered.length;
+              saveStoredLocalSearches(savedSearches);
+              if (currentUser) {
+                fb.saveUserSearch(currentUser.uid, search).catch(console.error);
+              }
+            }
+          } catch (e) {
+            console.warn("Error recuperando locales para la lista:", e);
+          }
+        }
+      }
+    }
+
+    // 4. Activar el filtro de la lista guardada
     activeSavedSearchId = search.id;
     activeSavedSearchName = search.name;
     activeSearchQuery = '';
 
-    window.closeSavedSearchesModal();
     showActiveListBanner(`Lista: "${search.name}"`);
-
     await renderCurrentMapMarkers();
     renderPlacesList();
     updateStatsCounter();
@@ -1887,7 +1958,10 @@ import * as fb from './firebase-service.js';
     const search = savedSearches.find(s => s.id === searchId);
     if (!search) return;
 
-    const listPlaces = places.filter(p => search.placeIds && search.placeIds.includes(p.id));
+    let listPlaces = search.places || [];
+    if (!listPlaces || listPlaces.length === 0) {
+      listPlaces = places.filter(p => search.placeIds && search.placeIds.includes(p.id));
+    }
     const safeName = search.name.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
     exportPlacesListToCSV(listPlaces, `lista_${safeName}_${new Date().toISOString().slice(0, 10)}.csv`);
   };
