@@ -1743,13 +1743,8 @@ import * as fb from './firebase-service.js';
       drawer.classList.remove('translate-y-full', 'pointer-events-none', 'opacity-0');
       drawer.classList.add('translate-y-0', 'opacity-100');
 
-      if (isMobile) {
-        // En celular, abrir primero en modo Peek (~200px) para no tapar el mapa
-        collapseDrawerToPeek();
-      } else {
-        // En desktop, abrir completo
-        expandDrawer();
-      }
+      // Abrir directamente en modo visible completo para que el usuario vea toda la información y CRM de un vistazo
+      expandDrawer();
     }
 
     document.getElementById('drawer-title').innerText = place.name;
@@ -1760,26 +1755,28 @@ import * as fb from './firebase-service.js';
     document.getElementById('drawer-open-status').innerText = place.openStatus || 'Consultar';
 
     const photoImg = document.getElementById('drawer-photo');
+    const photoContainer = document.getElementById('drawer-photo-container');
     if (place.photos && place.photos.length > 0) {
       photoImg.src = place.photos[0];
-      photoImg.classList.remove('hidden');
+      if (photoContainer) photoContainer.classList.remove('hidden');
     } else {
-      photoImg.classList.add('hidden');
+      if (photoContainer) photoContainer.classList.add('hidden');
     }
 
     const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`;
     document.getElementById('drawer-btn-directions').href = directionsUrl;
-    document.getElementById('drawer-btn-gmaps').href = place.googleMapsUrl || directionsUrl;
+    const gmapsBtn = document.getElementById('drawer-btn-gmaps');
+    if (gmapsBtn) gmapsBtn.href = place.googleMapsUrl || directionsUrl;
 
     const btnWeb = document.getElementById('drawer-btn-web');
     if (place.website && place.website.trim().length > 3) {
       btnWeb.href = place.website;
       btnWeb.classList.remove('opacity-40', 'pointer-events-none');
-      btnWeb.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg> Web`;
+      btnWeb.innerHTML = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg> Web`;
     } else {
       btnWeb.href = "#";
       btnWeb.classList.add('opacity-40', 'pointer-events-none');
-      btnWeb.innerHTML = `<span class="line-through text-slate-400">Sin web</span>`;
+      btnWeb.innerHTML = `<span class="line-through text-[#70757a]">Sin web</span>`;
     }
 
     const btnCall = document.getElementById('drawer-btn-call');
@@ -1832,14 +1829,14 @@ import * as fb from './firebase-service.js';
 
     drawerMode = 'expanded';
     if (drawer) {
-      drawer.style.maxHeight = '85vh';
+      drawer.style.maxHeight = window.innerWidth >= 768 ? 'calc(100% - 24px)' : '85%';
       drawer.style.height = 'auto';
     }
     if (backdrop && window.innerWidth < 768) {
       backdrop.classList.remove('hidden', 'pointer-events-none', 'opacity-0');
       backdrop.classList.add('opacity-100');
     }
-    if (hint) hint.innerText = "Desliza abajo para minimizar";
+    if (hint) hint.innerText = "Toca para minimizar";
   }
 
   function collapseDrawerToPeek() {
@@ -1850,7 +1847,8 @@ import * as fb from './firebase-service.js';
 
     drawerMode = 'peek';
     if (drawer) {
-      drawer.style.maxHeight = '205px';
+      drawer.style.maxHeight = '145px';
+      drawer.style.height = 'auto';
     }
     if (backdrop) {
       backdrop.classList.remove('opacity-100');
@@ -1859,7 +1857,7 @@ import * as fb from './firebase-service.js';
         if (drawerMode === 'peek' && backdrop) backdrop.classList.add('hidden');
       }, 250);
     }
-    if (hint) hint.innerText = "Toca para ver notas y CRM";
+    if (hint) hint.innerText = "Toca para expandir ficha";
     if (scrollBody) scrollBody.scrollTop = 0;
   }
 
@@ -1916,21 +1914,21 @@ import * as fb from './firebase-service.js';
     const isLowReviews = place.reviewCount < 20;
 
     auditContainer.innerHTML = `
-      <div class="bg-white border border-[#dadce0] rounded-2xl p-3.5 text-xs text-[#202124] space-y-2.5 google-card-shadow">
-        <div class="font-medium flex items-center gap-1.5 text-[#202124] text-xs">
-          <svg class="w-4 h-4 text-[#e37400]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+      <div class="bg-white border border-[#dadce0] rounded-xl p-2.5 text-xs text-[#202124] space-y-2 google-card-shadow">
+        <div class="font-medium flex items-center gap-1.5 text-[#202124] text-[11px]">
+          <svg class="w-3.5 h-3.5 text-[#e37400]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
           Auditoría de Oportunidad Comercial:
         </div>
-        <div class="grid grid-cols-2 gap-2 pt-0.5">
-          <div class="p-2 rounded-xl border flex items-center gap-1.5 font-medium ${hasWeb ? 'bg-[#e6f4ea] border-[#ceead6] text-[#137333]' : 'bg-[#fce8e6] border-[#fad2cf] text-[#c5221f]'}">
-            ${hasWeb ? '✓ Sitio Web Activo' : '✗ Sin Sitio Web'}
+        <div class="grid grid-cols-2 gap-1.5 pt-0.5">
+          <div class="px-2 py-1 rounded-lg border flex items-center gap-1 font-medium text-[11px] truncate ${hasWeb ? 'bg-[#e6f4ea] border-[#ceead6] text-[#137333]' : 'bg-[#fce8e6] border-[#fad2cf] text-[#c5221f]'}">
+            ${hasWeb ? '✓ Web Activa' : '✗ Sin Web'}
           </div>
-          <div class="p-2 rounded-xl border flex items-center gap-1.5 font-medium ${isLowReviews ? 'bg-[#fef7e0] border-[#feefc3] text-[#b06000]' : 'bg-[#e6f4ea] border-[#ceead6] text-[#137333]'}">
-            ${isLowReviews ? `⚠️ Pocas reseñas (${place.reviewCount})` : `✓ ${place.reviewCount} reseñas`}
+          <div class="px-2 py-1 rounded-lg border flex items-center gap-1 font-medium text-[11px] truncate ${isLowReviews ? 'bg-[#fef7e0] border-[#feefc3] text-[#b06000]' : 'bg-[#e6f4ea] border-[#ceead6] text-[#137333]'}">
+            ${isLowReviews ? `⚠️ ${place.reviewCount} reseñas` : `✓ ${place.reviewCount} reseñas`}
           </div>
         </div>
-        <p class="text-[#5f6368] text-[11px] leading-relaxed border-t border-[#f1f3f4] pt-2 font-normal">
-          ${place.auditSummary?.hook || 'Negocio de Santa Fe con alta afluencia pero potencial de posicionamiento digital desaprovechado.'}
+        <p class="text-[#5f6368] text-[11px] leading-snug border-t border-[#f1f3f4] pt-1.5 font-normal">
+          ${place.auditSummary?.hook || 'Negocio con potencial de conversión y captación digital en Santa Fe.'}
         </p>
       </div>
     `;
