@@ -424,11 +424,7 @@ import * as fb from './firebase-service.js';
         window.closePlaceDrawer();
       });
 
-      // Mostrar botón flotante 'Buscar en esta zona' al arrastrar el mapa
-      googleMapInstance.addListener('dragend', () => {
-        const btnContainer = document.getElementById('btn-search-this-area-container');
-        if (btnContainer) btnContainer.classList.remove('hidden');
-      });
+
 
       await renderGoogleMarkers();
 
@@ -924,7 +920,7 @@ import * as fb from './firebase-service.js';
             <div>
               <p class="text-sm font-bold text-slate-800">Esperando búsqueda</p>
               <p class="text-xs text-slate-500 mt-1 max-w-[240px] mx-auto leading-relaxed">
-                Ingresa un rubro comercial arriba o pulsa <b>"Buscar en esta zona"</b> en el mapa para explorar clientes.
+                Ingresa un rubro comercial arriba para comenzar a explorar clientes.
               </p>
             </div>
           </div>
