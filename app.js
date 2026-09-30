@@ -592,6 +592,8 @@ import * as fb from './firebase-service.js';
     await initGoogleMapsApp(key);
   };
 
+  let activeSelectedMarkerId = null;
+
   async function renderGoogleMarkers() {
     if (!googleMapInstance) return;
 
@@ -609,8 +611,15 @@ import * as fb from './firebase-service.js';
 
       filtered.forEach(place => {
         const color = CATEGORY_COLORS[place.categoryType] || CATEGORY_COLORS.general;
+        const isSelected = selectedPlace && selectedPlace.id === place.id;
 
-        const pin = new PinElement({
+        // Si está seleccionado: color blanco con icono de cohete 🚀
+        const pin = isSelected ? new PinElement({
+          background: '#ffffff',
+          borderColor: '#1a73e8',
+          glyph: '🚀',
+          scale: 1.35
+        }) : new PinElement({
           background: color,
           borderColor: '#ffffff',
           glyphColor: '#ffffff',
@@ -621,28 +630,107 @@ import * as fb from './firebase-service.js';
           position: { lat: place.lat, lng: place.lng },
           map: googleMapInstance,
           title: place.name,
-          content: pin
+          content: pin.element || pin,
+          zIndex: isSelected ? 9999 : 1
         });
+
+        marker._placeData = place;
+        marker._defaultColor = color;
 
         marker.addListener('click', () => {
           openPlaceDrawer(place);
         });
 
         markers[place.id] = marker;
+        if (isSelected) activeSelectedMarkerId = place.id;
       });
     } catch (e) {
       console.warn("AdvancedMarkerElement no disponible, usando Marker estándar:", e);
       filtered.forEach(place => {
+        const isSelected = selectedPlace && selectedPlace.id === place.id;
         const marker = new google.maps.Marker({
           position: { lat: place.lat, lng: place.lng },
           map: googleMapInstance,
-          title: place.name
+          title: place.name,
+          zIndex: isSelected ? 9999 : 1
         });
+
+        if (isSelected) {
+          const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48"><path fill="#ffffff" stroke="#1a73e8" stroke-width="2" d="M18 1 C9 1 1 9 1 18 C1 28 18 47 18 47 C18 47 35 28 35 18 C35 9 27 1 18 1 Z"/><text x="18" y="22" font-size="16" text-anchor="middle" dominant-baseline="central">🚀</text></svg>`;
+          marker.setIcon({
+            url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+            scaledSize: new google.maps.Size(36, 48)
+          });
+        }
+
+        marker._placeData = place;
         marker.addListener('click', () => {
           openPlaceDrawer(place);
         });
         markers[place.id] = marker;
+        if (isSelected) activeSelectedMarkerId = place.id;
       });
+    }
+  }
+
+  // Actualiza dinámicamente el marcador seleccionado para que sea blanco con cohete 🚀
+  async function updateSelectedMarkerHighlight(selectedPlaceId) {
+    if (!googleMapInstance) return;
+
+    try {
+      const { PinElement } = await getGoogleMapsLibrary("marker");
+
+      // 1. Restaurar el marcador previamente seleccionado a su color original
+      if (activeSelectedMarkerId && activeSelectedMarkerId !== selectedPlaceId && markers[activeSelectedMarkerId]) {
+        const prevMarker = markers[activeSelectedMarkerId];
+        const prevPlace = prevMarker._placeData || places.find(p => p.id === activeSelectedMarkerId);
+        if (prevPlace) {
+          const defaultColor = prevMarker._defaultColor || CATEGORY_COLORS[prevPlace.categoryType] || CATEGORY_COLORS.general;
+          if (PinElement && prevMarker.content !== undefined) {
+            const defaultPin = new PinElement({
+              background: defaultColor,
+              borderColor: '#ffffff',
+              glyphColor: '#ffffff',
+              scale: 1.05
+            });
+            prevMarker.content = defaultPin.element || defaultPin;
+            prevMarker.zIndex = 1;
+          } else if (prevMarker.setIcon) {
+            prevMarker.setIcon(null);
+            prevMarker.setZIndex(1);
+          }
+        }
+      }
+
+      // 2. Si se cerró la selección, limpiar estado activo
+      if (!selectedPlaceId || !markers[selectedPlaceId]) {
+        activeSelectedMarkerId = null;
+        return;
+      }
+
+      // 3. Aplicar color blanco e icono de cohete 🚀 al marcador recién seleccionado
+      const targetMarker = markers[selectedPlaceId];
+      activeSelectedMarkerId = selectedPlaceId;
+
+      if (PinElement && targetMarker.content !== undefined) {
+        const rocketPin = new PinElement({
+          background: '#ffffff',
+          borderColor: '#1a73e8', // Borde azul Google Maps para contraste de alta nitidez
+          glyph: '🚀',
+          scale: 1.35 // Destacado visualmente
+        });
+        targetMarker.content = rocketPin.element || rocketPin;
+        targetMarker.zIndex = 9999; // Siempre al frente
+      } else if (targetMarker.setIcon) {
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48"><path fill="#ffffff" stroke="#1a73e8" stroke-width="2" d="M18 1 C9 1 1 9 1 18 C1 28 18 47 18 47 C18 47 35 28 35 18 C35 9 27 1 18 1 Z"/><text x="18" y="22" font-size="16" text-anchor="middle" dominant-baseline="central">🚀</text></svg>`;
+        targetMarker.setIcon({
+          url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+          scaledSize: new google.maps.Size(36, 48)
+        });
+        targetMarker.setZIndex(9999);
+      }
+    } catch (err) {
+      console.warn("Error al actualizar icono de cohete en marcador seleccionado:", err);
     }
   }
 
@@ -1184,12 +1272,14 @@ import * as fb from './firebase-service.js';
       const color = CATEGORY_COLORS[place.categoryType] || '#5f6368';
       const statusBadge = getStatusBadgeHTML(place.visitStatus);
       const isOpportunity = (!place.website) || (place.reviewCount < 20);
+      const isSelected = selectedPlace && selectedPlace.id === place.id;
+      const activeStyle = isSelected ? 'bg-[#e8f0fe]/70 border-l-4 border-l-[#1a73e8]' : 'hover:bg-[#f8f9fa] active:bg-[#f1f3f4]';
 
       return `
         <div onclick="window.selectPlaceFromList('${place.id}')" 
-             class="p-3 border-b border-[#f1f3f4] hover:bg-[#f8f9fa] active:bg-[#f1f3f4] cursor-pointer transition-colors flex items-start gap-3">
-          <div class="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-white shadow-xs mt-0.5" style="background-color: ${color}">
-            ${CATEGORY_ICONS_SVG[place.categoryType] || CATEGORY_ICONS_SVG.general}
+             class="p-3 border-b border-[#f1f3f4] ${activeStyle} cursor-pointer transition-colors flex items-start gap-3">
+          <div class="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-white shadow-xs mt-0.5" style="background-color: ${isSelected ? '#1a73e8' : color}">
+            ${isSelected ? '🚀' : (CATEGORY_ICONS_SVG[place.categoryType] || CATEGORY_ICONS_SVG.general)}
           </div>
           <div class="flex-1 min-w-0">
             <div class="flex items-center justify-between gap-1">
@@ -1734,6 +1824,9 @@ import * as fb from './firebase-service.js';
 
   function openPlaceDrawer(place) {
     selectedPlace = place;
+    updateSelectedMarkerHighlight(place.id);
+    renderPlacesList();
+
     const drawer = document.getElementById('place-drawer');
     const backdrop = document.getElementById('place-drawer-backdrop');
     const isMobile = window.innerWidth < 768;
@@ -1953,6 +2046,8 @@ import * as fb from './firebase-service.js';
     }
     drawerMode = 'closed';
     selectedPlace = null;
+    updateSelectedMarkerHighlight(null);
+    renderPlacesList();
   };
 
   function initDrawerGestures() {
