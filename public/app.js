@@ -744,7 +744,7 @@ import * as fb from './firebase-service.js';
       if (matched.length > 0) {
         centerMapOnCoord(matched[0].lat, matched[0].lng);
       } else {
-        alert(`No se encontraron locales para "${query}". Prueba con "supermercado", "telas", "taller", "ferretería", "odontología", etc.`);
+        showAppToast(`No se encontraron comercios para "${query}". Intenta con otra zona o rubro.`, 'info');
       }
 
     } catch (err) {
@@ -779,20 +779,31 @@ import * as fb from './firebase-service.js';
   // Búsqueda moderna usando google.maps.places.Place.searchByText (Places API New)
   async function executeGooglePlacesSearch(query, options = {}) {
     try {
-      let center = options.center || null;
-      if (!center && googleMapInstance && typeof googleMapInstance.getCenter === 'function') {
-        const c = googleMapInstance.getCenter();
-        center = {
-          lat: typeof c.lat === 'function' ? c.lat() : c.lat,
-          lng: typeof c.lng === 'function' ? c.lng() : c.lng
-        };
-      }
-
       const { Place } = await getGoogleMapsLibrary("places");
 
       let queryText = `${query} Santa Fe Argentina`;
       if (options.zoneName) {
         queryText = `${query} ${options.zoneName} Santa Fe Argentina`;
+      }
+
+      let locationBias = undefined;
+      if (options.center) {
+        locationBias = {
+          center: { lat: options.center.lat, lng: options.center.lng },
+          radius: 8000
+        };
+      } else if (googleMapInstance) {
+        if (typeof googleMapInstance.getBounds === 'function' && googleMapInstance.getBounds()) {
+          locationBias = googleMapInstance.getBounds();
+        } else if (typeof googleMapInstance.getCenter === 'function' && googleMapInstance.getCenter()) {
+          const c = googleMapInstance.getCenter();
+          const latVal = typeof c.lat === 'function' ? c.lat() : c.lat;
+          const lngVal = typeof c.lng === 'function' ? c.lng() : c.lng;
+          locationBias = {
+            center: { lat: latVal, lng: lngVal },
+            radius: 10000
+          };
+        }
       }
 
       const request = {
@@ -811,7 +822,7 @@ import * as fb from './firebase-service.js';
           'nationalPhoneNumber', 
           'googleMapsURI'
         ],
-        locationBias: center ? { lat: center.lat(), lng: center.lng() } : undefined,
+        locationBias: locationBias,
         maxResultCount: 20
       };
 
@@ -880,6 +891,7 @@ import * as fb from './firebase-service.js';
               contactName: '',
               contactPhone: '',
               notes: '',
+              searchQuery: (query || '').toLowerCase().trim(),
               auditSummary: {
                 hasWebsite: !!(res.websiteURI && res.websiteURI.length > 3),
                 lowReviews: (res.userRatingCount || 0) < 20,
@@ -1082,24 +1094,27 @@ import * as fb from './firebase-service.js';
 
       // 2. Filtro de Búsqueda por Texto
       if (activeSearchQuery && !activeSavedSearchId) {
-        const q = activeSearchQuery.toLowerCase();
-        const textToSearch = `${p.name} ${p.category} ${p.address} ${p.notes || ''} ${p.categoryType}`.toLowerCase();
-        const matchesQuery = textToSearch.includes(q) || 
-          (q.includes('super') && (p.categoryType === 'supermarket' || textToSearch.includes('super'))) ||
-          (q.includes('mercado') && (p.categoryType === 'supermarket' || textToSearch.includes('mercado'))) ||
-          (q.includes('almacen') && (p.categoryType === 'supermarket' || textToSearch.includes('almacen'))) ||
-          (q.includes('tela') && (p.categoryType === 'textile' || textToSearch.includes('tela'))) ||
-          (q.includes('mercer') && (p.categoryType === 'textile' || textToSearch.includes('mercer'))) ||
-          (q.includes('textil') && (p.categoryType === 'textile' || textToSearch.includes('textil'))) ||
-          (q.includes('taller') && (p.categoryType === 'mechanical' || textToSearch.includes('mecanic'))) ||
-          (q.includes('mecanic') && p.categoryType === 'mechanical') ||
-          (q.includes('dent') && p.categoryType === 'dental') ||
-          (q.includes('odont') && p.categoryType === 'dental') ||
-          (q.includes('medic') && p.categoryType === 'medical') ||
-          (q.includes('estet') && p.categoryType === 'aesthetic') ||
-          (q.includes('ferret') && p.categoryType === 'hardware');
-        
-        if (!matchesQuery) return false;
+        const q = activeSearchQuery.toLowerCase().trim();
+        // Si el local proviene de la búsqueda activa actual, se incluye directamente
+        if (p.searchQuery && p.searchQuery === q) {
+          // Coincidencia directa
+        } else {
+          const textToSearch = `${p.name} ${p.category} ${p.address} ${p.notes || ''} ${p.categoryType} ${p.searchQuery || ''}`.toLowerCase();
+          const words = q.split(/\s+/).filter(w => w.length > 1);
+          const matches = (words.length === 0) || words.some(w => 
+            textToSearch.includes(w) ||
+            (w.includes('dent') && (textToSearch.includes('dent') || textToSearch.includes('odont') || p.categoryType === 'dental')) ||
+            (w.includes('odont') && (textToSearch.includes('dent') || textToSearch.includes('odont') || p.categoryType === 'dental')) ||
+            (w.includes('super') && (p.categoryType === 'supermarket' || textToSearch.includes('super') || textToSearch.includes('mercado'))) ||
+            (w.includes('mercado') && (p.categoryType === 'supermarket' || textToSearch.includes('mercado') || textToSearch.includes('super'))) ||
+            (w.includes('tela') && (p.categoryType === 'textile' || textToSearch.includes('tela') || textToSearch.includes('textil'))) ||
+            (w.includes('mecanic') && (p.categoryType === 'mechanical' || textToSearch.includes('taller') || textToSearch.includes('mecanic'))) ||
+            (w.includes('taller') && (p.categoryType === 'mechanical' || textToSearch.includes('taller') || textToSearch.includes('mecanic'))) ||
+            (w.includes('gimnas') && (textToSearch.includes('gym') || textToSearch.includes('fitness'))) ||
+            (w.includes('gym') && (textToSearch.includes('gimnas') || textToSearch.includes('gym')))
+          );
+          if (!matches) return false;
+        }
       }
 
       // 3. Filtro de Categoría (Chips)
