@@ -1192,7 +1192,7 @@ import * as fb from './firebase-service.js';
 
       return `
         <div onclick="window.selectPlaceFromList('${place.id}')" 
-             class="p-3.5 border-b border-slate-100 hover:bg-blue-50/60 active:bg-blue-100/60 cursor-pointer transition-colors flex items-start gap-3 select-none">
+             class="p-3.5 border-b border-slate-100 hover:bg-blue-50/60 active:bg-blue-100/60 cursor-pointer transition-colors flex items-start gap-3">
           <div class="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center text-white shadow-xs mt-0.5" style="background-color: ${color}">
             ${CATEGORY_ICONS_SVG[place.categoryType] || CATEGORY_ICONS_SVG.general}
           </div>
@@ -1237,7 +1237,7 @@ import * as fb from './firebase-service.js';
     `).join('');
 
     return `
-      <div id="explore-more-container" class="p-3.5 bg-slate-50/90 border-t border-slate-200 space-y-3 select-none">
+      <div id="explore-more-container" class="p-3.5 bg-slate-50/90 border-t border-slate-200 space-y-3">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-1.5">
             <span class="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
@@ -1724,14 +1724,8 @@ import * as fb from './firebase-service.js';
     const place = places.find(p => p.id === id);
     if (!place) return;
 
-    const listView = document.getElementById('places-list-panel');
-    const mapView = document.getElementById('map-panel');
-    const btnToggle = document.getElementById('btn-toggle-view');
-
-    if (!listView.classList.contains('hidden') && window.innerWidth < 768) {
-      listView.classList.add('hidden');
-      mapView.classList.remove('hidden');
-      if (btnToggle) btnToggle.innerHTML = `<span>Lista</span>`;
+    if (window.innerWidth < 768) {
+      window.switchMobileTab('map');
     }
 
     centerMapOnCoord(place.lat, place.lng);
@@ -1894,18 +1888,27 @@ import * as fb from './firebase-service.js';
     const mapView = document.getElementById('map-panel');
     const btnMap = document.getElementById('nav-btn-map');
     const btnList = document.getElementById('nav-btn-list');
+    const btnToggle = document.getElementById('btn-toggle-view');
 
     if (tab === 'list') {
-      if (listView) listView.classList.remove('hidden');
+      if (listView) {
+        listView.classList.remove('hidden');
+        listView.classList.add('flex');
+      }
       if (mapView) mapView.classList.add('hidden');
       if (btnMap) btnMap.className = "flex flex-col items-center justify-center py-1 px-3 text-slate-500 font-medium text-[11px] active:scale-95 transition-transform";
       if (btnList) btnList.className = "flex flex-col items-center justify-center py-1 px-3 text-blue-600 font-bold text-[11px] active:scale-95 transition-transform relative";
+      if (btnToggle) btnToggle.innerHTML = `<span>Mapa</span>`;
       window.closePlaceDrawer();
     } else {
-      if (listView) listView.classList.add('hidden');
+      if (listView) {
+        listView.classList.add('hidden');
+        listView.classList.remove('flex');
+      }
       if (mapView) mapView.classList.remove('hidden');
       if (btnMap) btnMap.className = "flex flex-col items-center justify-center py-1 px-3 text-blue-600 font-bold text-[11px] active:scale-95 transition-transform";
       if (btnList) btnList.className = "flex flex-col items-center justify-center py-1 px-3 text-slate-500 font-medium text-[11px] active:scale-95 transition-transform relative";
+      if (btnToggle) btnToggle.innerHTML = `<span>Lista</span>`;
       if (googleMapInstance && window.google && window.google.maps) {
         google.maps.event?.trigger?.(googleMapInstance, 'resize');
       }
@@ -2248,14 +2251,10 @@ import * as fb from './firebase-service.js';
 
     if (btnToggleView) {
       btnToggleView.addEventListener('click', () => {
-        if (listView.classList.contains('hidden')) {
-          listView.classList.remove('hidden');
-          mapView.classList.add('hidden');
-          btnToggleView.innerHTML = `<span>Mapa</span>`;
+        if (listView && listView.classList.contains('hidden')) {
+          window.switchMobileTab('list');
         } else {
-          listView.classList.add('hidden');
-          mapView.classList.remove('hidden');
-          btnToggleView.innerHTML = `<span>Lista</span>`;
+          window.switchMobileTab('map');
         }
       });
     }

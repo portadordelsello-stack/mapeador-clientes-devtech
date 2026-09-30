@@ -38,12 +38,21 @@
       z-index: 10;
     }
     .custom-scrollbar::-webkit-scrollbar {
-      width: 5px;
-      height: 5px;
+      width: 6px;
+      height: 6px;
     }
     .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
+      background: #94a3b8;
       border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #64748b;
+    }
+    .custom-scrollbar {
+      scrollbar-width: thin;
+      scrollbar-color: #94a3b8 transparent;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
     }
     .no-scrollbar::-webkit-scrollbar {
       display: none;
@@ -155,8 +164,8 @@
   <main class="flex-1 relative flex overflow-hidden">
     
     <!-- Panel Lista Lateral (Visible en desktop o al alternar en móvil) -->
-    <section id="places-list-panel" class="hidden md:flex flex-col w-80 lg:w-96 bg-white border-r border-slate-200 z-20 flex-shrink-0 shadow-sm">
-      <div class="p-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between text-xs gap-2">
+    <section id="places-list-panel" class="hidden md:flex flex-col w-full md:w-80 lg:w-96 h-full bg-white border-r border-slate-200 z-20 flex-shrink-0 shadow-sm overflow-hidden">
+      <div class="p-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between text-xs gap-2 flex-shrink-0">
         <span id="stats-summary" class="font-bold text-slate-700 text-xs truncate">Esperando búsqueda...</span>
         <div class="flex items-center gap-1.5 flex-shrink-0">
           <select id="filter-status-select" class="text-xs bg-white border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-600 font-medium">
@@ -172,7 +181,7 @@
           </button>
         </div>
       </div>
-      <div id="places-list-container" class="flex-1 overflow-y-auto custom-scrollbar divide-y divide-slate-100">
+      <div id="places-list-container" class="flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar divide-y divide-slate-100 pb-24 md:pb-4" style="-webkit-overflow-scrolling: touch; touch-action: pan-y;">
         <!-- Renderizado dinámico desde app.js -->
       </div>
     </section>
