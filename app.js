@@ -18,17 +18,17 @@ import * as fb from './firebase-service.js';
   let googleMapInstance = null;
   let userLocationMarker = null;
 
-  // Iconos SVG y Colores según categoría para Google Maps PinElement
+  // Iconos SVG y Colores según categoría para Google Maps PinElement (Paleta oficial Google Maps)
   const CATEGORY_COLORS = {
-    supermarket: '#16a34a', // Verde supermercados / alimentos
-    textile: '#8b5cf6', // Violeta telas / mercería / indumentaria
-    mechanical: '#2563eb', // Azul automotor / mecánica
-    dental: '#0284c7', // Celeste odontología
-    medical: '#dc2626', // Rojo salud
-    aesthetic: '#ec4899', // Rosa estética
-    hardware: '#ea580c', // Naranja ferretería / industria
-    food: '#d97706', // Ámbar gastronomía
-    general: '#475569' // Pizarra neutro
+    supermarket: '#188038', // Verde Google Maps (mercados y alimentos)
+    textile: '#9334e6', // Violeta Google Maps (indumentaria / moda)
+    mechanical: '#1a73e8', // Azul Google Maps (servicios y talleres)
+    dental: '#007b83', // Teal Google Maps (salud dental)
+    medical: '#d93025', // Rojo Google Maps (salud / clínicas)
+    aesthetic: '#e52592', // Rosa Google Maps (belleza / estética)
+    hardware: '#e37400', // Naranja Google Maps (ferretería / materiales)
+    food: '#e8710a', // Ámbar Google Maps (gastronomía)
+    general: '#5f6368' // Gris Google Maps neutro
   };
 
   const CATEGORY_ICONS_SVG = {
@@ -57,7 +57,7 @@ import * as fb from './firebase-service.js';
   ];
   let currentZoneIndex = 0;
 
-  // Notificación flotante Toast para avisos sutiles
+  // Notificación flotante Toast estilo Snackbar de Google Maps (Material 3)
   window.showAppToast = function(message, type = 'info') {
     let container = document.getElementById('app-toast-container');
     if (!container) {
@@ -68,19 +68,14 @@ import * as fb from './firebase-service.js';
     }
 
     const toast = document.createElement('div');
-    const bgColors = {
-      success: 'bg-emerald-600 text-white border-emerald-500 shadow-emerald-900/30',
-      info: 'bg-slate-900 text-white border-slate-700 shadow-black/40',
-      error: 'bg-rose-600 text-white border-rose-500 shadow-rose-900/30'
-    };
     const icons = {
       success: '✓',
       info: '📍',
       error: '⚠'
     };
 
-    toast.className = `${bgColors[type] || bgColors.info} border px-4 py-2.5 rounded-2xl shadow-xl text-xs font-semibold flex items-center gap-2 transform -translate-y-2 opacity-0 transition-all duration-300 pointer-events-auto`;
-    toast.innerHTML = `<span class="font-bold text-sm">${icons[type] || '•'}</span> <span>${message}</span>`;
+    toast.className = 'bg-[#323232] text-white text-xs font-medium px-4 py-2.5 rounded-full google-floating-shadow-lg flex items-center gap-2 transform -translate-y-2 opacity-0 transition-all duration-300 pointer-events-auto border border-[#444]';
+    toast.innerHTML = `<span class="font-bold text-sm text-[#8ab4f8]">${icons[type] || '•'}</span> <span class="leading-tight">${message}</span>`;
     
     container.appendChild(toast);
 
@@ -1186,29 +1181,29 @@ import * as fb from './firebase-service.js';
     }
 
     let listHtml = filtered.map(place => {
-      const color = CATEGORY_COLORS[place.categoryType] || '#475569';
+      const color = CATEGORY_COLORS[place.categoryType] || '#5f6368';
       const statusBadge = getStatusBadgeHTML(place.visitStatus);
       const isOpportunity = (!place.website) || (place.reviewCount < 20);
 
       return `
         <div onclick="window.selectPlaceFromList('${place.id}')" 
-             class="p-3.5 border-b border-slate-100 hover:bg-blue-50/60 active:bg-blue-100/60 cursor-pointer transition-colors flex items-start gap-3">
-          <div class="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center text-white shadow-xs mt-0.5" style="background-color: ${color}">
+             class="p-3 border-b border-[#f1f3f4] hover:bg-[#f8f9fa] active:bg-[#f1f3f4] cursor-pointer transition-colors flex items-start gap-3">
+          <div class="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-white shadow-xs mt-0.5" style="background-color: ${color}">
             ${CATEGORY_ICONS_SVG[place.categoryType] || CATEGORY_ICONS_SVG.general}
           </div>
           <div class="flex-1 min-w-0">
             <div class="flex items-center justify-between gap-1">
-              <h4 class="font-bold text-slate-900 text-xs truncate">${place.name}</h4>
+              <h4 class="font-medium text-[#202124] text-[13px] truncate leading-snug">${place.name}</h4>
               ${statusBadge}
             </div>
-            <p class="text-[11px] text-slate-500 truncate mt-0.5">${place.address}</p>
+            <p class="text-[11px] text-[#5f6368] truncate mt-0.5">${place.address}</p>
             <div class="flex items-center gap-2 mt-1.5 text-[11px]">
-              <span class="flex items-center text-amber-500 font-semibold">
-                ★ ${place.rating > 0 ? place.rating : 'N/A'} <span class="text-slate-400 font-normal ml-0.5">(${place.reviewCount})</span>
+              <span class="flex items-center text-[#e37400] font-medium">
+                ★ ${place.rating > 0 ? place.rating : 'N/A'} <span class="text-[#70757a] font-normal ml-0.5">(${place.reviewCount})</span>
               </span>
-              <span class="text-slate-300">•</span>
-              <span class="text-slate-600 truncate">${place.category}</span>
-              ${isOpportunity ? '<span class="ml-auto text-[10px] font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">Oportunidad</span>' : ''}
+              <span class="text-[#dadce0]">•</span>
+              <span class="text-[#5f6368] truncate">${place.category}</span>
+              ${isOpportunity ? '<span class="ml-auto text-[10px] font-medium text-[#c5221f] bg-[#fce8e6] px-2 py-0.5 rounded-full border border-[#fad2cf]">Oportunidad</span>' : ''}
             </div>
           </div>
         </div>
@@ -1223,41 +1218,41 @@ import * as fb from './firebase-service.js';
     container.innerHTML = listHtml;
   }
 
-  // Genera el bloque inferior con "Cargar más resultados" y exploración por barrios
+  // Genera el bloque inferior con "Cargar más resultados" y exploración por barrios (Estilo Google Maps)
   function getExploreMoreCardHTML() {
     const nextZone = SANTA_FE_ZONES[currentZoneIndex % SANTA_FE_ZONES.length];
 
     const chipsHTML = SANTA_FE_ZONES.map(z => `
       <button type="button" onclick="window.exploreZoneDirectly('${z.id}')"
               title="Explorar ${z.name}"
-              class="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 active:scale-95 transition-all shadow-xs flex items-center gap-1 cursor-pointer">
-        <span class="text-blue-500 text-[10px]">📍</span>
+              class="px-2.5 py-1 text-[11px] font-medium rounded-full bg-white border border-[#dadce0] text-[#3c4043] hover:bg-[#f1f3f4] hover:border-[#1a73e8] hover:text-[#1a73e8] active:scale-95 transition-all shadow-2xs flex items-center gap-1 cursor-pointer">
+        <span class="text-[#1a73e8] text-[10px]">📍</span>
         <span>${z.shortName}</span>
       </button>
     `).join('');
 
     return `
-      <div id="explore-more-container" class="p-3.5 bg-slate-50/90 border-t border-slate-200 space-y-3">
+      <div id="explore-more-container" class="p-3.5 bg-[#f8f9fa] border-t border-[#dadce0] space-y-3">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
-            <span class="text-xs font-bold text-slate-800">¿Quieres más resultados?</span>
+            <span class="w-2 h-2 rounded-full bg-[#1a73e8] animate-pulse"></span>
+            <span class="text-xs font-medium text-[#202124]">¿Quieres más resultados?</span>
           </div>
-          <span class="text-[10px] font-semibold text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded-full">
-            Próxima: <b class="text-blue-600">${nextZone.shortName}</b>
+          <span class="text-[10px] font-medium text-[#5f6368] bg-white border border-[#dadce0] px-2 py-0.5 rounded-full">
+            Próxima: <b class="text-[#1a73e8]">${nextZone.shortName}</b>
           </span>
         </div>
 
         <button id="btn-load-more-places" type="button" onclick="window.loadMorePlacesNextZone()"
-                class="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white rounded-xl font-bold text-xs shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 transition-all cursor-pointer">
+                class="w-full py-2.5 px-4 bg-[#1a73e8] hover:bg-[#1557b0] active:scale-[0.98] text-white rounded-full font-medium text-xs google-card-shadow flex items-center justify-center gap-2 transition-all cursor-pointer">
           <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
           <span>Cargar más resultados (+20 de ${nextZone.shortName})</span>
         </button>
 
-        <div class="pt-2 border-t border-slate-200/80">
-          <p class="text-[11px] font-bold text-slate-600 mb-2 flex items-center justify-between">
+        <div class="pt-2 border-t border-[#dadce0]">
+          <p class="text-[11px] font-medium text-[#5f6368] mb-2 flex items-center justify-between">
             <span>Exploración profunda por barrios:</span>
-            <span class="text-[10px] font-normal text-slate-400">Toca para ir a esa zona</span>
+            <span class="text-[10px] font-normal text-[#70757a]">Toca para ir a esa zona</span>
           </p>
           <div class="flex flex-wrap gap-1.5">
             ${chipsHTML}
@@ -1270,15 +1265,15 @@ import * as fb from './firebase-service.js';
   function getStatusBadgeHTML(status) {
     switch (status) {
       case 'interested':
-        return '<span class="text-[10px] px-2 py-0.5 font-bold rounded-full bg-emerald-100 text-emerald-800">Interesado</span>';
+        return '<span class="text-[10px] px-2 py-0.5 font-medium rounded-full bg-[#e6f4ea] text-[#137333] border border-[#ceead6]">Interesado</span>';
       case 'callback':
-        return '<span class="text-[10px] px-2 py-0.5 font-bold rounded-full bg-amber-100 text-amber-800">Volver</span>';
+        return '<span class="text-[10px] px-2 py-0.5 font-medium rounded-full bg-[#fef7e0] text-[#b06000] border border-[#feefc3]">Volver</span>';
       case 'rejected':
-        return '<span class="text-[10px] px-2 py-0.5 font-medium rounded-full bg-slate-100 text-slate-600">No le interesa</span>';
+        return '<span class="text-[10px] px-2 py-0.5 font-medium rounded-full bg-[#fce8e6] text-[#c5221f] border border-[#fad2cf]">No interesa</span>';
       case 'closed':
-        return '<span class="text-[10px] px-2 py-0.5 font-bold rounded-full bg-purple-100 text-purple-800">Cerrado 🎉</span>';
+        return '<span class="text-[10px] px-2 py-0.5 font-medium rounded-full bg-[#f3e8fd] text-[#7627bb] border border-[#e9d2fd]">Cerrado 🎉</span>';
       default:
-        return '<span class="text-[10px] px-2 py-0.5 font-medium rounded-full bg-slate-100 text-slate-500">Pendiente</span>';
+        return '<span class="text-[10px] px-2 py-0.5 font-medium rounded-full bg-[#f1f3f4] text-[#5f6368] border border-[#dadce0]">Pendiente</span>';
     }
   }
 
@@ -1921,21 +1916,21 @@ import * as fb from './firebase-service.js';
     const isLowReviews = place.reviewCount < 20;
 
     auditContainer.innerHTML = `
-      <div class="bg-amber-50/90 border border-amber-200 rounded-2xl p-3.5 text-xs text-amber-950 space-y-2">
-        <div class="font-bold flex items-center gap-1.5 text-amber-900 text-xs">
-          <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-          Auditoría de Oportunidad para la Venta:
+      <div class="bg-white border border-[#dadce0] rounded-2xl p-3.5 text-xs text-[#202124] space-y-2.5 google-card-shadow">
+        <div class="font-medium flex items-center gap-1.5 text-[#202124] text-xs">
+          <svg class="w-4 h-4 text-[#e37400]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          Auditoría de Oportunidad Comercial:
         </div>
         <div class="grid grid-cols-2 gap-2 pt-0.5">
-          <div class="p-2 rounded-xl bg-white/80 border border-amber-100 flex items-center gap-1.5 ${hasWeb ? 'text-emerald-700' : 'text-rose-700 font-bold'}">
-            ${hasWeb ? '✓ Web cargada' : '✗ NO TIENE SITIO WEB'}
+          <div class="p-2 rounded-xl border flex items-center gap-1.5 font-medium ${hasWeb ? 'bg-[#e6f4ea] border-[#ceead6] text-[#137333]' : 'bg-[#fce8e6] border-[#fad2cf] text-[#c5221f]'}">
+            ${hasWeb ? '✓ Sitio Web Activo' : '✗ Sin Sitio Web'}
           </div>
-          <div class="p-2 rounded-xl bg-white/80 border border-amber-100 flex items-center gap-1.5 ${isLowReviews ? 'text-amber-800 font-bold' : 'text-emerald-700'}">
+          <div class="p-2 rounded-xl border flex items-center gap-1.5 font-medium ${isLowReviews ? 'bg-[#fef7e0] border-[#feefc3] text-[#b06000]' : 'bg-[#e6f4ea] border-[#ceead6] text-[#137333]'}">
             ${isLowReviews ? `⚠️ Pocas reseñas (${place.reviewCount})` : `✓ ${place.reviewCount} reseñas`}
           </div>
         </div>
-        <p class="text-slate-700 text-[11px] leading-relaxed border-t border-amber-200/80 pt-2 font-medium">
-          ${place.auditSummary?.hook || 'Negocio de Santa Fe con alta afluencia pero potencial de conversión desaprovechado.'}
+        <p class="text-[#5f6368] text-[11px] leading-relaxed border-t border-[#f1f3f4] pt-2 font-normal">
+          ${place.auditSummary?.hook || 'Negocio de Santa Fe con alta afluencia pero potencial de posicionamiento digital desaprovechado.'}
         </p>
       </div>
     `;
