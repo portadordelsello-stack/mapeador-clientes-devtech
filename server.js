@@ -28,24 +28,28 @@ app.get('/api/places/search', async (req, res) => {
   if (customKey && customKey.trim().length > 10) {
     try {
       const gplacesUrl = 'https://places.googleapis.com/v1/places:searchText';
-      const gResponse = await fetch(gplacesUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Goog-Api-Key': customKey.trim(),
-          'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.regularOpeningHours,places.websiteURI,places.nationalPhoneNumber,places.googleMapsURI'
-        },
-        body: JSON.stringify({
-          textQuery: `${query} Santa Fe Argentina`,
-          locationBias: {
-            circle: {
-              center: { latitude: -31.6333, longitude: -60.7000 },
-              radius: 15000.0
-            }
+        const queryText = query.toLowerCase().includes('santa fe') ? query : `${query} Santa Fe Argentina`;
+        const latVal = parseFloat(req.query.lat) || -31.6333;
+        const lngVal = parseFloat(req.query.lng) || -60.7000;
+
+        const gResponse = await fetch(gplacesUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': customKey.trim(),
+            'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.regularOpeningHours,places.websiteURI,places.nationalPhoneNumber,places.googleMapsURI'
           },
-          maxResultCount: 20
-        })
-      });
+          body: JSON.stringify({
+            textQuery: queryText,
+            locationBias: {
+              circle: {
+                center: { latitude: latVal, longitude: lngVal },
+                radius: 10000.0
+              }
+            },
+            maxResultCount: 20
+          })
+        });
 
       if (gResponse.ok) {
         const gData = await gResponse.json();

@@ -43,6 +43,61 @@ import * as fb from './firebase-service.js';
     general: `<svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>`
   };
 
+  // Zonas y Barrios comerciales clave de Santa Fe para exploraciones profundas
+  const SANTA_FE_ZONES = [
+    { id: 'candioti', name: 'Barrio Candioti', shortName: 'Candioti', lat: -31.6370, lng: -60.6950 },
+    { id: 'aristobulo', name: 'Av. Aristóbulo del Valle', shortName: 'Aristóbulo', lat: -31.6150, lng: -60.7020 },
+    { id: 'centro', name: 'Centro / Peatonal San Martín', shortName: 'Centro', lat: -31.6450, lng: -60.7075 },
+    { id: 'facundo', name: 'Av. Facundo Zuviría', shortName: 'Facundo Zuviría', lat: -31.6180, lng: -60.7100 },
+    { id: 'recoleta', name: 'Recoleta / San Martín Norte', shortName: 'Recoleta', lat: -31.6385, lng: -60.7060 },
+    { id: 'guadalupe', name: 'Guadalupe / Costanera', shortName: 'Guadalupe', lat: -31.5950, lng: -60.6780 },
+    { id: 'sur', name: 'Barrio Sur', shortName: 'Barrio Sur', lat: -31.6570, lng: -60.7110 },
+    { id: 'blas_parera', name: 'Av. Blas Parera', shortName: 'Blas Parera', lat: -31.6100, lng: -60.7300 },
+    { id: 'roma', name: 'Barrio Roma', shortName: 'Barrio Roma', lat: -31.6360, lng: -60.7250 }
+  ];
+  let currentZoneIndex = 0;
+
+  // Notificación flotante Toast para avisos sutiles
+  window.showAppToast = function(message, type = 'info') {
+    let container = document.getElementById('app-toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'app-toast-container';
+      container.className = 'fixed top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 pointer-events-none px-4 w-full max-w-md';
+      document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    const bgColors = {
+      success: 'bg-emerald-600 text-white border-emerald-500 shadow-emerald-900/30',
+      info: 'bg-slate-900 text-white border-slate-700 shadow-black/40',
+      error: 'bg-rose-600 text-white border-rose-500 shadow-rose-900/30'
+    };
+    const icons = {
+      success: '✓',
+      info: '📍',
+      error: '⚠'
+    };
+
+    toast.className = `${bgColors[type] || bgColors.info} border px-4 py-2.5 rounded-2xl shadow-xl text-xs font-semibold flex items-center gap-2 transform -translate-y-2 opacity-0 transition-all duration-300 pointer-events-auto`;
+    toast.innerHTML = `<span class="font-bold text-sm">${icons[type] || '•'}</span> <span>${message}</span>`;
+    
+    container.appendChild(toast);
+
+    requestAnimationFrame(() => {
+      toast.classList.remove('-translate-y-2', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+    });
+
+    setTimeout(() => {
+      toast.classList.remove('translate-y-0', 'opacity-100');
+      toast.classList.add('-translate-y-2', 'opacity-0');
+      setTimeout(() => {
+        if (toast.parentNode) toast.parentNode.removeChild(toast);
+      }, 300);
+    }, 4000);
+  };
+
   // ==========================================
   // INICIALIZACIÓN DE LA APLICACIÓN
   // ==========================================
@@ -617,6 +672,7 @@ import * as fb from './firebase-service.js';
 
     const cleanQuery = query.trim().toLowerCase();
     activeSearchQuery = cleanQuery;
+    currentZoneIndex = 0; // Reiniciar explorador de barrios para esta nueva búsqueda
 
     const searchBtn = document.getElementById('btn-search-places');
     const origHtml = searchBtn ? searchBtn.innerHTML : 'Buscar';
@@ -721,13 +777,26 @@ import * as fb from './firebase-service.js';
   };
 
   // Búsqueda moderna usando google.maps.places.Place.searchByText (Places API New)
-  async function executeGooglePlacesSearch(query) {
+  async function executeGooglePlacesSearch(query, options = {}) {
     try {
-      const center = googleMapInstance.getCenter();
+      let center = options.center || null;
+      if (!center && googleMapInstance && typeof googleMapInstance.getCenter === 'function') {
+        const c = googleMapInstance.getCenter();
+        center = {
+          lat: typeof c.lat === 'function' ? c.lat() : c.lat,
+          lng: typeof c.lng === 'function' ? c.lng() : c.lng
+        };
+      }
+
       const { Place } = await getGoogleMapsLibrary("places");
 
+      let queryText = `${query} Santa Fe Argentina`;
+      if (options.zoneName) {
+        queryText = `${query} ${options.zoneName} Santa Fe Argentina`;
+      }
+
       const request = {
-        textQuery: `${query} Santa Fe Argentina`,
+        textQuery: queryText,
         fields: [
           'id', 
           'displayName', 
@@ -837,6 +906,156 @@ import * as fb from './firebase-service.js';
     }
   }
 
+  // Cargar más resultados avanzando secuencialmente a la siguiente zona de Santa Fe
+  window.loadMorePlacesNextZone = async function() {
+    const btn = document.getElementById('btn-load-more-places');
+    const origHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+      btn.innerHTML = `<span class="animate-spin inline-block mr-1.5">⏳</span> Explorando...`;
+      btn.disabled = true;
+    }
+
+    try {
+      const zone = SANTA_FE_ZONES[currentZoneIndex % SANTA_FE_ZONES.length];
+      currentZoneIndex++;
+
+      const queryInput = document.getElementById('search-query-input');
+      const query = activeSearchQuery || (queryInput && queryInput.value.trim()) || 'comercios';
+
+      let added = 0;
+      if (googleMapInstance && window.google && window.google.maps) {
+        added = await executeGooglePlacesSearch(query, {
+          zoneName: zone.name,
+          center: { lat: zone.lat, lng: zone.lng }
+        });
+      }
+
+      // Si no devolvió desde el cliente, consultar endpoint de apoyo
+      if (added === 0) {
+        const config = window.getStoredConfig();
+        const response = await fetch(`/api/places/search?q=${encodeURIComponent(query + ' ' + zone.name)}&lat=${zone.lat}&lng=${zone.lng}`, {
+          headers: {
+            'x-google-api-key': config.googleMapsApiKey || ''
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.places && Array.isArray(data.places)) {
+            const newBatch = [];
+            data.places.forEach(p => {
+              const exists = places.some(e => e.id === p.id || e.name.toLowerCase() === p.name.toLowerCase());
+              if (!exists) {
+                places.unshift(p);
+                newBatch.push(p);
+                added++;
+              }
+            });
+            if (newBatch.length > 0) {
+              window.saveStoredPlaces(places);
+              if (currentUser) fb.saveUserPlacesBatch(currentUser.uid, newBatch).catch(console.error);
+            }
+          }
+        }
+      }
+
+      // Centrar el mapa suavemente hacia la nueva zona explorada
+      if (googleMapInstance) {
+        googleMapInstance.panTo({ lat: zone.lat, lng: zone.lng });
+      }
+
+      await renderCurrentMapMarkers();
+      renderPlacesList();
+      updateStatsCounter();
+
+      if (added > 0) {
+        showAppToast(`➕ ${added} nuevos locales sumados en ${zone.shortName}! (Total en lista: ${places.length})`, 'success');
+      } else {
+        showAppToast(`Zona ${zone.shortName} explorada. No se encontraron comercios adicionales nuevos para este rubro.`, 'info');
+      }
+
+    } catch (err) {
+      console.error("Error al cargar más resultados:", err);
+      showAppToast("Inconveniente al explorar la siguiente zona.", 'error');
+    } finally {
+      if (btn) {
+        btn.innerHTML = origHtml;
+        btn.disabled = false;
+      }
+    }
+  };
+
+  // Explorar directamente un barrio/zona comercial de Santa Fe
+  window.exploreZoneDirectly = async function(zoneId) {
+    const zone = SANTA_FE_ZONES.find(z => z.id === zoneId);
+    if (!zone) return;
+
+    const queryInput = document.getElementById('search-query-input');
+    const query = activeSearchQuery || (queryInput && queryInput.value.trim());
+
+    if (!query) {
+      if (queryInput) queryInput.focus();
+      if (googleMapInstance) {
+        googleMapInstance.panTo({ lat: zone.lat, lng: zone.lng });
+        googleMapInstance.setZoom(15);
+      }
+      showAppToast(`📍 Mapa centrado en ${zone.name}. Ingresa un rubro comercial arriba para buscar.`, 'info');
+      return;
+    }
+
+    showAppToast(`Buscando "${query}" en ${zone.name}...`, 'info');
+
+    // Mover mapa de inmediato
+    if (googleMapInstance) {
+      googleMapInstance.panTo({ lat: zone.lat, lng: zone.lng });
+      googleMapInstance.setZoom(15);
+    }
+
+    let added = 0;
+    if (googleMapInstance && window.google && window.google.maps) {
+      added = await executeGooglePlacesSearch(query, {
+        zoneName: zone.name,
+        center: { lat: zone.lat, lng: zone.lng }
+      });
+    }
+
+    if (added === 0) {
+      const config = window.getStoredConfig();
+      const response = await fetch(`/api/places/search?q=${encodeURIComponent(query + ' ' + zone.name)}&lat=${zone.lat}&lng=${zone.lng}`, {
+        headers: {
+          'x-google-api-key': config.googleMapsApiKey || ''
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.places && Array.isArray(data.places)) {
+          const newBatch = [];
+          data.places.forEach(p => {
+            const exists = places.some(e => e.id === p.id || e.name.toLowerCase() === p.name.toLowerCase());
+            if (!exists) {
+              places.unshift(p);
+              newBatch.push(p);
+              added++;
+            }
+          });
+          if (newBatch.length > 0) {
+            window.saveStoredPlaces(places);
+            if (currentUser) fb.saveUserPlacesBatch(currentUser.uid, newBatch).catch(console.error);
+          }
+        }
+      }
+    }
+
+    await renderCurrentMapMarkers();
+    renderPlacesList();
+    updateStatsCounter();
+
+    if (added > 0) {
+      showAppToast(`➕ ${added} locales agregados en ${zone.shortName}! (Total en lista: ${places.length})`, 'success');
+    } else {
+      showAppToast(`Zona ${zone.shortName} explorada. No se encontraron comercios adicionales nuevos para este rubro.`, 'info');
+    }
+  };
+
   function centerMapOnCoord(lat, lng) {
     if (googleMapInstance) {
       googleMapInstance.panTo({ lat, lng });
@@ -923,6 +1142,18 @@ import * as fb from './firebase-service.js';
                 Ingresa un rubro comercial arriba para comenzar a explorar clientes.
               </p>
             </div>
+            <div class="pt-3 border-t border-slate-100 w-full">
+              <p class="text-[11px] font-semibold text-slate-500 mb-2">O explora directamente por barrio:</p>
+              <div class="flex flex-wrap justify-center gap-1.5 max-w-[280px] mx-auto">
+                ${SANTA_FE_ZONES.slice(0, 6).map(z => `
+                  <button type="button" onclick="window.exploreZoneDirectly('${z.id}')"
+                          class="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-slate-50 border border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 active:scale-95 transition-all shadow-xs flex items-center gap-1 cursor-pointer">
+                    <span class="text-[10px]">📍</span>
+                    <span>${z.shortName}</span>
+                  </button>
+                `).join('')}
+              </div>
+            </div>
           </div>
         `;
       } else {
@@ -939,7 +1170,7 @@ import * as fb from './firebase-service.js';
       return;
     }
 
-    container.innerHTML = filtered.map(place => {
+    let listHtml = filtered.map(place => {
       const color = CATEGORY_COLORS[place.categoryType] || '#475569';
       const statusBadge = getStatusBadgeHTML(place.visitStatus);
       const isOpportunity = (!place.website) || (place.reviewCount < 20);
@@ -968,6 +1199,57 @@ import * as fb from './firebase-service.js';
         </div>
       `;
     }).join('');
+
+    // Si hay una búsqueda activa o hay resultados en vista libre, mostrar tarjeta con botón "Cargar más" y exploración por barrios
+    if (activeSearchQuery || (filtered.length > 0 && !activeSavedSearchId)) {
+      listHtml += getExploreMoreCardHTML();
+    }
+
+    container.innerHTML = listHtml;
+  }
+
+  // Genera el bloque inferior con "Cargar más resultados" y exploración por barrios
+  function getExploreMoreCardHTML() {
+    const nextZone = SANTA_FE_ZONES[currentZoneIndex % SANTA_FE_ZONES.length];
+
+    const chipsHTML = SANTA_FE_ZONES.map(z => `
+      <button type="button" onclick="window.exploreZoneDirectly('${z.id}')"
+              title="Explorar ${z.name}"
+              class="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 active:scale-95 transition-all shadow-xs flex items-center gap-1 cursor-pointer">
+        <span class="text-blue-500 text-[10px]">📍</span>
+        <span>${z.shortName}</span>
+      </button>
+    `).join('');
+
+    return `
+      <div id="explore-more-container" class="p-3.5 bg-slate-50/90 border-t border-slate-200 space-y-3 select-none">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+            <span class="text-xs font-bold text-slate-800">¿Quieres más resultados?</span>
+          </div>
+          <span class="text-[10px] font-semibold text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded-full">
+            Próxima: <b class="text-blue-600">${nextZone.shortName}</b>
+          </span>
+        </div>
+
+        <button id="btn-load-more-places" type="button" onclick="window.loadMorePlacesNextZone()"
+                class="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white rounded-xl font-bold text-xs shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 transition-all cursor-pointer">
+          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+          <span>Cargar más resultados (+20 de ${nextZone.shortName})</span>
+        </button>
+
+        <div class="pt-2 border-t border-slate-200/80">
+          <p class="text-[11px] font-bold text-slate-600 mb-2 flex items-center justify-between">
+            <span>Exploración profunda por barrios:</span>
+            <span class="text-[10px] font-normal text-slate-400">Toca para ir a esa zona</span>
+          </p>
+          <div class="flex flex-wrap gap-1.5">
+            ${chipsHTML}
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   function getStatusBadgeHTML(status) {
@@ -1798,6 +2080,7 @@ import * as fb from './firebase-service.js';
       // 1. Vaciar locales en memoria
       places = [];
       activeSearchQuery = '';
+      currentZoneIndex = 0;
       activeSavedSearchId = null;
       activeSavedSearchName = '';
 
