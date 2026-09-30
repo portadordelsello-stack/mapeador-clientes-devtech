@@ -592,6 +592,198 @@ import * as fb from './firebase-service.js';
     await initGoogleMapsApp(key);
   };
 
+  // Detección contextual del icono según el rubro o nombre del comercio (Opción 1: Emojis)
+  function getPlaceCategoryIcon(place) {
+    if (!place) return '📍';
+
+    const name = (place.name || '').toLowerCase();
+    const category = (place.category || '').toLowerCase();
+    const categoryType = (place.categoryType || '').toLowerCase();
+    const types = Array.isArray(place.types) ? place.types.map(t => String(t).toLowerCase()) : [];
+    const fullText = `${name} ${category} ${types.join(' ')}`;
+
+    // 1. Panadería / Pastelería / Facturas / Confitería
+    if (
+      types.includes('bakery') ||
+      fullText.includes('panad') ||
+      fullText.includes('pasteler') ||
+      fullText.includes('confiter') ||
+      fullText.includes('factur') ||
+      fullText.includes('panific') ||
+      fullText.includes('croissant') ||
+      fullText.includes('medialuna')
+    ) {
+      return '🥖';
+    }
+
+    // 2. Odontología / Dentistas
+    if (
+      categoryType === 'dental' ||
+      types.includes('dentist') ||
+      fullText.includes('odont') ||
+      fullText.includes('dentis') ||
+      fullText.includes('dental')
+    ) {
+      return '🦷';
+    }
+
+    // 3. Farmacia / Salud / Medicina / Óptica
+    if (
+      categoryType === 'medical' ||
+      types.includes('pharmacy') ||
+      types.includes('drugstore') ||
+      types.includes('hospital') ||
+      types.includes('doctor') ||
+      fullText.includes('farma') ||
+      fullText.includes('medic') ||
+      fullText.includes('clinic') ||
+      fullText.includes('salud') ||
+      fullText.includes('optic')
+    ) {
+      return '💊';
+    }
+
+    // 4. Mecánica / Taller / Gomería / Repuestos / Automotor
+    if (
+      categoryType === 'mechanical' ||
+      types.includes('car_repair') ||
+      types.includes('car_dealer') ||
+      types.includes('auto_parts_store') ||
+      fullText.includes('mecanic') ||
+      fullText.includes('taller') ||
+      fullText.includes('gomeria') ||
+      fullText.includes('repuesto') ||
+      fullText.includes('lubricentro') ||
+      fullText.includes('freno') ||
+      fullText.includes('alineac')
+    ) {
+      return '🔧';
+    }
+
+    // 5. Supermercado / Almacén / Autoservicio / Despensa / Kiosco
+    if (
+      categoryType === 'supermarket' ||
+      types.includes('supermarket') ||
+      types.includes('grocery_store') ||
+      types.includes('convenience_store') ||
+      fullText.includes('super') ||
+      fullText.includes('mercado') ||
+      fullText.includes('almacen') ||
+      fullText.includes('despensa') ||
+      fullText.includes('kiosco') ||
+      fullText.includes('quiosco') ||
+      fullText.includes('autoservicio')
+    ) {
+      return '🛒';
+    }
+
+    // 6. Ropa / Indumentaria / Textil / Mercería / Calzado
+    if (
+      categoryType === 'textile' ||
+      types.includes('clothing_store') ||
+      types.includes('shoe_store') ||
+      fullText.includes('ropa') ||
+      fullText.includes('indument') ||
+      fullText.includes('textil') ||
+      fullText.includes('tela') ||
+      fullText.includes('mercer') ||
+      fullText.includes('zapater') ||
+      fullText.includes('calzad') ||
+      fullText.includes('lencer') ||
+      fullText.includes('boutique')
+    ) {
+      return '👕';
+    }
+
+    // 7. Estética / Peluquería / Barbería / Uñas / Spa
+    if (
+      categoryType === 'aesthetic' ||
+      types.includes('hair_care') ||
+      types.includes('beauty_salon') ||
+      types.includes('spa') ||
+      fullText.includes('peluquer') ||
+      fullText.includes('barber') ||
+      fullText.includes('estetic') ||
+      fullText.includes('belleza') ||
+      fullText.includes('uñas') ||
+      fullText.includes('depilac')
+    ) {
+      return '✂️';
+    }
+
+    // 8. Gastronomía / Restaurante / Bar / Café / Heladería / Pizzería
+    if (
+      categoryType === 'food' ||
+      types.includes('restaurant') ||
+      types.includes('bar') ||
+      types.includes('cafe') ||
+      types.includes('meal_takeaway') ||
+      fullText.includes('restauran') ||
+      fullText.includes('bar') ||
+      fullText.includes('cafe') ||
+      fullText.includes('pizza') ||
+      fullText.includes('helad') ||
+      fullText.includes('cervec') ||
+      fullText.includes('rotiser') ||
+      fullText.includes('hamburgue') ||
+      fullText.includes('comida')
+    ) {
+      return '🍽️';
+    }
+
+    // 9. Ferretería / Pinturería / Sanitarios / Construcción
+    if (
+      categoryType === 'hardware' ||
+      types.includes('hardware_store') ||
+      fullText.includes('ferret') ||
+      fullText.includes('pintur') ||
+      fullText.includes('sanitar') ||
+      fullText.includes('corralon') ||
+      fullText.includes('electric') ||
+      fullText.includes('bulon') ||
+      fullText.includes('material')
+    ) {
+      return '🔨';
+    }
+
+    // 10. Veterinaria / Mascotas / Forrajería
+    if (
+      types.includes('veterinary_care') ||
+      types.includes('pet_store') ||
+      fullText.includes('veterin') ||
+      fullText.includes('mascot') ||
+      fullText.includes('pet') ||
+      fullText.includes('forraj')
+    ) {
+      return '🐾';
+    }
+
+    // 11. Gimnasio / Deportes / Fitness
+    if (
+      types.includes('gym') ||
+      fullText.includes('gimnas') ||
+      fullText.includes('gym') ||
+      fullText.includes('fitness') ||
+      fullText.includes('cancha') ||
+      fullText.includes('paddle') ||
+      fullText.includes('padel') ||
+      fullText.includes('crossfit')
+    ) {
+      return '🏋️';
+    }
+
+    // 12. Inmobiliaria / Propiedades
+    if (
+      types.includes('real_estate_agency') ||
+      fullText.includes('inmobiliar') ||
+      fullText.includes('propiedad')
+    ) {
+      return '🏠';
+    }
+
+    return '📍';
+  }
+
   let activeSelectedMarkerId = null;
 
   async function renderGoogleMarkers() {
@@ -612,12 +804,13 @@ import * as fb from './firebase-service.js';
       filtered.forEach(place => {
         const color = CATEGORY_COLORS[place.categoryType] || CATEGORY_COLORS.general;
         const isSelected = selectedPlace && selectedPlace.id === place.id;
+        const glyphIcon = getPlaceCategoryIcon(place);
 
-        // Si está seleccionado: color blanco con icono de cohete 🚀
+        // Si está seleccionado: color blanco con icono del rubro (ej: 🥖, 🦷, 🛒)
         const pin = isSelected ? new PinElement({
           background: '#ffffff',
           borderColor: '#1a73e8',
-          glyph: '🚀',
+          glyph: glyphIcon,
           scale: 1.35
         }) : new PinElement({
           background: color,
@@ -648,6 +841,8 @@ import * as fb from './firebase-service.js';
       console.warn("AdvancedMarkerElement no disponible, usando Marker estándar:", e);
       filtered.forEach(place => {
         const isSelected = selectedPlace && selectedPlace.id === place.id;
+        const glyphIcon = getPlaceCategoryIcon(place);
+
         const marker = new google.maps.Marker({
           position: { lat: place.lat, lng: place.lng },
           map: googleMapInstance,
@@ -656,7 +851,7 @@ import * as fb from './firebase-service.js';
         });
 
         if (isSelected) {
-          const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48"><path fill="#ffffff" stroke="#1a73e8" stroke-width="2" d="M18 1 C9 1 1 9 1 18 C1 28 18 47 18 47 C18 47 35 28 35 18 C35 9 27 1 18 1 Z"/><text x="18" y="22" font-size="16" text-anchor="middle" dominant-baseline="central">🚀</text></svg>`;
+          const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48"><path fill="#ffffff" stroke="#1a73e8" stroke-width="2" d="M18 1 C9 1 1 9 1 18 C1 28 18 47 18 47 C18 47 35 28 35 18 C35 9 27 1 18 1 Z"/><text x="18" y="22" font-size="16" text-anchor="middle" dominant-baseline="central">${glyphIcon}</text></svg>`;
           marker.setIcon({
             url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
             scaledSize: new google.maps.Size(36, 48)
@@ -673,7 +868,7 @@ import * as fb from './firebase-service.js';
     }
   }
 
-  // Actualiza dinámicamente el marcador seleccionado para que sea blanco con cohete 🚀
+  // Actualiza dinámicamente el marcador seleccionado para que sea blanco con icono del rubro
   async function updateSelectedMarkerHighlight(selectedPlaceId) {
     if (!googleMapInstance) return;
 
@@ -708,21 +903,23 @@ import * as fb from './firebase-service.js';
         return;
       }
 
-      // 3. Aplicar color blanco e icono de cohete 🚀 al marcador recién seleccionado
+      // 3. Aplicar color blanco e icono del rubro al marcador recién seleccionado
       const targetMarker = markers[selectedPlaceId];
+      const targetPlace = targetMarker._placeData || places.find(p => p.id === selectedPlaceId);
+      const glyphIcon = getPlaceCategoryIcon(targetPlace);
       activeSelectedMarkerId = selectedPlaceId;
 
       if (PinElement && targetMarker.content !== undefined) {
         const rocketPin = new PinElement({
           background: '#ffffff',
           borderColor: '#1a73e8', // Borde azul Google Maps para contraste de alta nitidez
-          glyph: '🚀',
+          glyph: glyphIcon,
           scale: 1.35 // Destacado visualmente
         });
         targetMarker.content = rocketPin.element || rocketPin;
         targetMarker.zIndex = 9999; // Siempre al frente
       } else if (targetMarker.setIcon) {
-        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48"><path fill="#ffffff" stroke="#1a73e8" stroke-width="2" d="M18 1 C9 1 1 9 1 18 C1 28 18 47 18 47 C18 47 35 28 35 18 C35 9 27 1 18 1 Z"/><text x="18" y="22" font-size="16" text-anchor="middle" dominant-baseline="central">🚀</text></svg>`;
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48"><path fill="#ffffff" stroke="#1a73e8" stroke-width="2" d="M18 1 C9 1 1 9 1 18 C1 28 18 47 18 47 C18 47 35 28 35 18 C35 9 27 1 18 1 Z"/><text x="18" y="22" font-size="16" text-anchor="middle" dominant-baseline="central">${glyphIcon}</text></svg>`;
         targetMarker.setIcon({
           url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
           scaledSize: new google.maps.Size(36, 48)
@@ -730,7 +927,7 @@ import * as fb from './firebase-service.js';
         targetMarker.setZIndex(9999);
       }
     } catch (err) {
-      console.warn("Error al actualizar icono de cohete en marcador seleccionado:", err);
+      console.warn("Error al actualizar icono en marcador seleccionado:", err);
     }
   }
 
@@ -1274,12 +1471,13 @@ import * as fb from './firebase-service.js';
       const isOpportunity = (!place.website) || (place.reviewCount < 20);
       const isSelected = selectedPlace && selectedPlace.id === place.id;
       const activeStyle = isSelected ? 'bg-[#e8f0fe]/70 border-l-4 border-l-[#1a73e8]' : 'hover:bg-[#f8f9fa] active:bg-[#f1f3f4]';
+      const placeIcon = getPlaceCategoryIcon(place);
 
       return `
         <div onclick="window.selectPlaceFromList('${place.id}')" 
              class="p-3 border-b border-[#f1f3f4] ${activeStyle} cursor-pointer transition-colors flex items-start gap-3">
-          <div class="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-white shadow-xs mt-0.5" style="background-color: ${isSelected ? '#1a73e8' : color}">
-            ${isSelected ? '🚀' : (CATEGORY_ICONS_SVG[place.categoryType] || CATEGORY_ICONS_SVG.general)}
+          <div class="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-white shadow-xs mt-0.5 text-base" style="background-color: ${isSelected ? '#ffffff' : color}; ${isSelected ? 'border: 2px solid #1a73e8;' : ''}">
+            ${isSelected ? placeIcon : (CATEGORY_ICONS_SVG[place.categoryType] || CATEGORY_ICONS_SVG.general)}
           </div>
           <div class="flex-1 min-w-0">
             <div class="flex items-center justify-between gap-1">
