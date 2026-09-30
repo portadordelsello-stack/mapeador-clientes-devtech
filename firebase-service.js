@@ -290,3 +290,40 @@ export async function saveUserSettings(userId, settings) {
     throw err;
   }
 }
+
+// ----------------------------------------------------
+// PUBLIC SHARED LISTS
+// ----------------------------------------------------
+
+export async function createSharedList(listData) {
+  if (!db || !listData) throw new Error("Firestore no disponible");
+  const shareId = 'sh_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 6);
+  const shareRef = doc(db, 'shared_lists', shareId);
+  const payload = {
+    id: shareId,
+    name: listData.name || 'Lista compartida',
+    query: listData.query || '',
+    category: listData.category || 'all',
+    placesCount: listData.placesCount || (listData.places ? listData.places.length : 0),
+    placeIds: listData.placeIds || [],
+    places: listData.places || [],
+    createdAt: Date.now()
+  };
+  await setDoc(shareRef, payload);
+  return shareId;
+}
+
+export async function fetchSharedList(shareId) {
+  if (!db || !shareId) return null;
+  try {
+    const shareRef = doc(db, 'shared_lists', shareId);
+    const snap = await getDoc(shareRef);
+    if (snap.exists()) {
+      return snap.data();
+    }
+    return null;
+  } catch (err) {
+    console.warn("Error fetching shared list from Firestore:", err);
+    return null;
+  }
+}

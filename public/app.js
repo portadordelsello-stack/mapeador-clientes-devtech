@@ -435,6 +435,9 @@ import * as fb from './firebase-service.js';
       // Centrar el mapa y solicitar ubicación GPS actual del usuario al iniciar la app
       window.locateUserPosition({ isStartup: true });
 
+      // Verificar si se abrió un enlace de lista compartida (?share=...)
+      await checkIncomingShareUrl();
+
       const badge = document.getElementById('engine-badge');
       if (badge) {
         badge.className = "hidden";
@@ -1159,6 +1162,10 @@ import * as fb from './firebase-service.js';
             <button onclick="window.exportSingleSearchToCSV('${item.id}')" class="text-emerald-700 font-bold px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-[11px]">
               Excel
             </button>
+            <button onclick="window.shareSavedSearch('${item.id}')" class="text-indigo-700 font-bold px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-[11px] flex items-center gap-1 active:scale-95 transition-all">
+              <svg class="w-3.5 h-3.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+              <span>Compartir</span>
+            </button>
             <button onclick="window.applySavedSearchFilter('${item.id}')" class="bg-blue-600 active:bg-blue-700 hover:bg-blue-700 text-white font-bold px-3 py-1 rounded-lg shadow-2xs text-[11px]">
               Ver en Mapa &rarr;
             </button>
@@ -1295,6 +1302,121 @@ import * as fb from './firebase-service.js';
     try {
       localStorage.setItem(window.STORAGE_KEYS.SAVED_SEARCHES, JSON.stringify(searches));
     } catch (e) {}
+  }
+
+  // ==========================================
+  // COMPARTIR LISTAS DE PROSPECTOS
+  // ==========================================
+  window.shareSavedSearch = async function(searchId) {
+    const search = savedSearches.find(s => s.id === searchId);
+    if (!search) return;
+
+    let listPlaces = search.places || [];
+    if (!listPlaces || listPlaces.length === 0) {
+      listPlaces = places.filter(p => search.placeIds && search.placeIds.includes(p.id));
+    }
+
+    try {
+      const shareId = await fb.createSharedList({
+        name: search.name,
+        query: search.query || search.name,
+        category: search.category || 'all',
+        placeIds: search.placeIds || listPlaces.map(p => p.id),
+        places: listPlaces,
+        placesCount: listPlaces.length || search.placesCount || 0
+      });
+
+      const shareUrl = `${window.location.origin}${window.location.pathname}?share=${shareId}`;
+
+      const titleEl = document.getElementById('share-modal-list-title');
+      if (titleEl) titleEl.innerText = `${search.name} (${listPlaces.length || search.placesCount || 0} locales)`;
+
+      const input = document.getElementById('share-modal-url-input');
+      if (input) input.value = shareUrl;
+
+      const waBtn = document.getElementById('share-modal-whatsapp-btn');
+      if (waBtn) {
+        waBtn.href = `https://api.whatsapp.com/send?text=${encodeURIComponent(`Te comparto la lista de prospectos "${search.name}" (${listPlaces.length || search.placesCount || 0} locales) en GeoProspector: ${shareUrl}`)}`;
+      }
+
+      // Copiar automáticamente al portapapeles
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        const copyBtn = document.getElementById('btn-copy-share-url');
+        if (copyBtn) {
+          copyBtn.innerText = "¡Copiado!";
+          setTimeout(() => { copyBtn.innerText = "Copiar"; }, 2000);
+        }
+      } catch (e) {}
+
+      document.getElementById('share-list-modal').classList.remove('hidden');
+    } catch (err) {
+      console.error("Error al compartir lista:", err);
+      const fallbackUrl = `${window.location.origin}${window.location.pathname}?q=${encodeURIComponent(search.query || search.name)}&title=${encodeURIComponent(search.name)}`;
+      prompt("Copia este enlace para compartir la lista:", fallbackUrl);
+    }
+  };
+
+  window.closeShareModal = function() {
+    const modal = document.getElementById('share-list-modal');
+    if (modal) modal.classList.add('hidden');
+  };
+
+  window.copyShareModalUrl = async function() {
+    const input = document.getElementById('share-modal-url-input');
+    if (!input) return;
+    try {
+      await navigator.clipboard.writeText(input.value);
+      const copyBtn = document.getElementById('btn-copy-share-url');
+      if (copyBtn) {
+        copyBtn.innerText = "¡Copiado!";
+        setTimeout(() => { copyBtn.innerText = "Copiar"; }, 2000);
+      }
+    } catch (e) {
+      input.select();
+      document.execCommand('copy');
+    }
+  };
+
+  async function checkIncomingShareUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const shareId = urlParams.get('share');
+    if (!shareId) return;
+
+    try {
+      const sharedList = await fb.fetchSharedList(shareId);
+      if (sharedList && sharedList.places && sharedList.places.length > 0) {
+        // Cargar los locales compartidos en memoria como resultado de búsqueda
+        places = sharedList.places;
+        activeSearchQuery = '';
+        activeSavedSearchId = null;
+        activeSavedSearchName = sharedList.name;
+
+        // Mostrar banner indicando lista compartida y botón para guardarla en la propia cuenta
+        showActiveListBanner(`Lista compartida: "${sharedList.name}"`);
+        const btnSaveShared = document.getElementById('btn-save-shared-to-account');
+        if (btnSaveShared) {
+          btnSaveShared.classList.remove('hidden');
+          btnSaveShared.classList.add('inline-flex');
+        }
+
+        await renderCurrentMapMarkers();
+        renderPlacesList();
+        updateStatsCounter();
+
+        if (places.length > 0) {
+          centerMapOnCoord(places[0].lat, places[0].lng);
+        }
+
+        // Sugerir el nombre para cuando el usuario presione guardar
+        const nameInput = document.getElementById('save-search-name-input');
+        if (nameInput) nameInput.value = sharedList.name;
+      } else if (urlParams.get('q')) {
+        await window.searchPlacesQuery(urlParams.get('q'));
+      }
+    } catch (err) {
+      console.error("Error al cargar lista compartida:", err);
+    }
   }
 
   function capitalizeText(str) {
@@ -1861,6 +1983,7 @@ import * as fb from './firebase-service.js';
         window.closeSavedSearchesModal();
         window.closeSettingsModal();
         window.closeSaveSearchDialog();
+        window.closeShareModal();
       }
     });
   }
