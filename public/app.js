@@ -602,7 +602,108 @@ import * as fb from './firebase-service.js';
     const types = Array.isArray(place.types) ? place.types.map(t => String(t).toLowerCase()) : [];
     const fullText = `${name} ${category} ${types.join(' ')}`;
 
-    // 1. Panadería / Pastelería / Facturas / Confitería
+    // 1. Oculista / Oftalmólogo / Óptica 👓
+    if (
+      fullText.includes('oftalmol') ||
+      fullText.includes('oculist') ||
+      fullText.includes('optic')
+    ) {
+      return '👓';
+    }
+
+    // 2. Odontología / Dentistas 🦷
+    if (
+      categoryType === 'dental' ||
+      types.includes('dentist') ||
+      fullText.includes('odont') ||
+      fullText.includes('dentis') ||
+      fullText.includes('dental')
+    ) {
+      return '🦷';
+    }
+
+    // 3. Farmacias ➕
+    if (
+      types.includes('pharmacy') ||
+      types.includes('drugstore') ||
+      fullText.includes('farma') ||
+      fullText.includes('droguer')
+    ) {
+      return '➕';
+    }
+
+    // 4. Sanatorio / Hospital 🏥
+    if (
+      types.includes('hospital') ||
+      fullText.includes('hospital') ||
+      fullText.includes('sanatorio')
+    ) {
+      return '🏥';
+    }
+
+    // 5. Clínicas, Médicos y Salud general 🩺
+    if (
+      categoryType === 'medical' ||
+      types.includes('doctor') ||
+      fullText.includes('clinic') ||
+      fullText.includes('medic') ||
+      fullText.includes('salud') ||
+      fullText.includes('consultorio') ||
+      fullText.includes('pediatr') ||
+      fullText.includes('cardiolog') ||
+      fullText.includes('traumatolog') ||
+      fullText.includes('ginecolog') ||
+      fullText.includes('kinesiol') ||
+      fullText.includes('laboratorio')
+    ) {
+      return '🩺';
+    }
+
+    // 6. Masajes / Masajista 💆
+    if (
+      fullText.includes('masaje') ||
+      fullText.includes('masajist') ||
+      fullText.includes('descontracturante')
+    ) {
+      return '💆';
+    }
+
+    // 7. Estética o centros de belleza / Uñas 💅
+    if (
+      categoryType === 'aesthetic' ||
+      types.includes('beauty_salon') ||
+      types.includes('spa') ||
+      fullText.includes('estetic') ||
+      fullText.includes('belleza') ||
+      fullText.includes('uñas') ||
+      fullText.includes('manicur') ||
+      fullText.includes('pedicur') ||
+      fullText.includes('depilac') ||
+      fullText.includes('spa')
+    ) {
+      return '💅';
+    }
+
+    // 8. Peluquería / Barbería ✂️
+    if (
+      types.includes('hair_care') ||
+      fullText.includes('peluquer') ||
+      fullText.includes('barber')
+    ) {
+      return '✂️';
+    }
+
+    // 9. Zapatería / Calzado 👞
+    if (
+      types.includes('shoe_store') ||
+      fullText.includes('zapater') ||
+      fullText.includes('calzad') ||
+      fullText.includes('zapatill')
+    ) {
+      return '👞';
+    }
+
+    // 10. Panadería / Pastelería / Facturas / Confitería 🥖
     if (
       types.includes('bakery') ||
       fullText.includes('panad') ||
@@ -616,34 +717,7 @@ import * as fb from './firebase-service.js';
       return '🥖';
     }
 
-    // 2. Odontología / Dentistas
-    if (
-      categoryType === 'dental' ||
-      types.includes('dentist') ||
-      fullText.includes('odont') ||
-      fullText.includes('dentis') ||
-      fullText.includes('dental')
-    ) {
-      return '🦷';
-    }
-
-    // 3. Farmacia / Salud / Medicina / Óptica
-    if (
-      categoryType === 'medical' ||
-      types.includes('pharmacy') ||
-      types.includes('drugstore') ||
-      types.includes('hospital') ||
-      types.includes('doctor') ||
-      fullText.includes('farma') ||
-      fullText.includes('medic') ||
-      fullText.includes('clinic') ||
-      fullText.includes('salud') ||
-      fullText.includes('optic')
-    ) {
-      return '💊';
-    }
-
-    // 4. Mecánica / Taller / Gomería / Repuestos / Automotor
+    // 11. Mecánica / Taller / Gomería / Repuestos / Automotor 🔧
     if (
       categoryType === 'mechanical' ||
       types.includes('car_repair') ||
@@ -660,7 +734,7 @@ import * as fb from './firebase-service.js';
       return '🔧';
     }
 
-    // 5. Supermercado / Almacén / Autoservicio / Despensa / Kiosco
+    // 12. Supermercado / Almacén / Autoservicio / Despensa / Kiosco 🛒
     if (
       categoryType === 'supermarket' ||
       types.includes('supermarket') ||
@@ -677,41 +751,22 @@ import * as fb from './firebase-service.js';
       return '🛒';
     }
 
-    // 6. Ropa / Indumentaria / Textil / Mercería / Calzado
+    // 13. Ropa / Indumentaria / Textil / Mercería 👕
     if (
       categoryType === 'textile' ||
       types.includes('clothing_store') ||
-      types.includes('shoe_store') ||
       fullText.includes('ropa') ||
       fullText.includes('indument') ||
       fullText.includes('textil') ||
       fullText.includes('tela') ||
       fullText.includes('mercer') ||
-      fullText.includes('zapater') ||
-      fullText.includes('calzad') ||
       fullText.includes('lencer') ||
       fullText.includes('boutique')
     ) {
       return '👕';
     }
 
-    // 7. Estética / Peluquería / Barbería / Uñas / Spa
-    if (
-      categoryType === 'aesthetic' ||
-      types.includes('hair_care') ||
-      types.includes('beauty_salon') ||
-      types.includes('spa') ||
-      fullText.includes('peluquer') ||
-      fullText.includes('barber') ||
-      fullText.includes('estetic') ||
-      fullText.includes('belleza') ||
-      fullText.includes('uñas') ||
-      fullText.includes('depilac')
-    ) {
-      return '✂️';
-    }
-
-    // 8. Gastronomía / Restaurante / Bar / Café / Heladería / Pizzería
+    // 14. Gastronomía / Restaurante / Bar / Café / Heladería / Pizzería 🍽️
     if (
       categoryType === 'food' ||
       types.includes('restaurant') ||
@@ -731,7 +786,7 @@ import * as fb from './firebase-service.js';
       return '🍽️';
     }
 
-    // 9. Ferretería / Pinturería / Sanitarios / Construcción
+    // 15. Ferretería / Pinturería / Sanitarios / Construcción 🔨
     if (
       categoryType === 'hardware' ||
       types.includes('hardware_store') ||
@@ -746,7 +801,7 @@ import * as fb from './firebase-service.js';
       return '🔨';
     }
 
-    // 10. Veterinaria / Mascotas / Forrajería
+    // 16. Veterinaria / Mascotas / Forrajería 🐾
     if (
       types.includes('veterinary_care') ||
       types.includes('pet_store') ||
@@ -758,7 +813,7 @@ import * as fb from './firebase-service.js';
       return '🐾';
     }
 
-    // 11. Gimnasio / Deportes / Fitness
+    // 17. Gimnasio / Deportes / Fitness 🏋️
     if (
       types.includes('gym') ||
       fullText.includes('gimnas') ||
@@ -772,7 +827,7 @@ import * as fb from './firebase-service.js';
       return '🏋️';
     }
 
-    // 12. Inmobiliaria / Propiedades
+    // 18. Inmobiliaria / Propiedades 🏠
     if (
       types.includes('real_estate_agency') ||
       fullText.includes('inmobiliar') ||
