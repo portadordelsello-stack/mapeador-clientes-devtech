@@ -413,11 +413,12 @@
       </div>
 
       <!-- Pie del Modal -->
-      <div class="p-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
-        <button onclick="window.promptSaveCurrentSearch()" class="px-3 py-1.5 text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-xl border border-amber-300">
-          + Guardar búsqueda actual
+      <div class="p-3 border-t border-[#dadce0] bg-[#f8f9fa] flex items-center justify-between">
+        <button onclick="window.promptSaveCurrentSearch()" class="px-3.5 py-2 text-xs font-medium text-[#1a73e8] bg-[#e8f0fe] hover:bg-[#d2e3fc] rounded-full border border-[#c5d8fb] flex items-center gap-1.5 transition-colors cursor-pointer active:scale-95">
+          <span>📌</span>
+          <span>+ Guardar lista actual</span>
         </button>
-        <button onclick="window.closeSavedSearchesModal()" class="px-4 py-1.5 text-xs font-semibold text-slate-600 active:text-slate-800">
+        <button onclick="window.closeSavedSearchesModal()" class="px-4 py-2 text-xs font-medium text-[#5f6368] hover:bg-[#f1f3f4] rounded-full transition-colors cursor-pointer">
           Cerrar
         </button>
       </div>

@@ -1880,21 +1880,29 @@ import * as fb from './firebase-service.js';
   };
 
   window.promptSaveCurrentSearch = function() {
-    const filtered = getFilteredPlaces();
-    if (filtered.length === 0) {
-      alert("No hay locales en la vista actual para guardar.");
+    // Si hay locales fijados con PIN, guardar ÚNICAMENTE los locales con PIN
+    const pinnedList = places.filter(p => isPlacePinned(p.id));
+    const placesToSave = pinnedList.length > 0 ? pinnedList : getFilteredPlaces();
+
+    if (placesToSave.length === 0) {
+      alert("No hay locales marcados con PIN ni resultados en la vista actual para guardar.");
       return;
     }
+
+    // Si el modal de Mis Listas estaba abierto, cerrarlo para mostrar el diálogo de guardado
+    window.closeSavedSearchesModal();
 
     const dialog = document.getElementById('save-search-dialog');
     const nameInput = document.getElementById('save-search-name-input');
     const queryPreview = document.getElementById('save-search-query-preview');
     const countPreview = document.getElementById('save-search-count-preview');
 
-    let defaultName = "Lista de Prospectos";
-    if (activeSearchQuery) {
+    let defaultName = pinnedList.length > 0 ? "Pines Seleccionados" : "Lista de Prospectos";
+    if (activeSearchQuery && pinnedList.length === 0) {
       defaultName = capitalizeText(activeSearchQuery);
-    } else if (currentFilter !== 'all') {
+    } else if (activeSearchQuery && pinnedList.length > 0) {
+      defaultName = `${capitalizeText(activeSearchQuery)} (Pines)`;
+    } else if (currentFilter !== 'all' && pinnedList.length === 0) {
       const categoryNames = {
         supermarket: 'Supermercados',
         textile: 'Tiendas de Telas & Mercerías',
@@ -1908,8 +1916,10 @@ import * as fb from './firebase-service.js';
     }
 
     nameInput.value = defaultName;
-    queryPreview.innerText = activeSearchQuery || (currentFilter !== 'all' ? `Categoría: ${currentFilter}` : 'Todos los locales visibles');
-    countPreview.innerText = filtered.length;
+    queryPreview.innerText = pinnedList.length > 0 
+      ? `📌 ${pinnedList.length} locales fijados con PIN en el mapa` 
+      : (activeSearchQuery || (currentFilter !== 'all' ? `Categoría: ${currentFilter}` : 'Todos los locales visibles'));
+    countPreview.innerText = placesToSave.length;
 
     dialog.classList.remove('hidden');
     nameInput.focus();
@@ -1927,17 +1937,21 @@ import * as fb from './firebase-service.js';
       return;
     }
 
-    const filtered = getFilteredPlaces();
-    const placeIds = filtered.map(p => p.id);
+    // Guardar ÚNICAMENTE los locales marcados con PIN si existen
+    const pinnedList = places.filter(p => isPlacePinned(p.id));
+    const isPinnedSaving = pinnedList.length > 0;
+    const placesToSave = isPinnedSaving ? pinnedList : getFilteredPlaces();
+    const placeIds = placesToSave.map(p => p.id);
 
     const newSearch = {
       id: `search_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
       name: name,
-      query: activeSearchQuery || currentFilter,
+      query: isPinnedSaving ? 'Pines Fijados' : (activeSearchQuery || currentFilter),
       category: currentFilter,
       placeIds: placeIds,
       placesCount: placeIds.length,
-      places: filtered,
+      places: placesToSave,
+      isPinnedList: isPinnedSaving,
       createdAt: Date.now()
     };
 
@@ -1954,7 +1968,9 @@ import * as fb from './firebase-service.js';
     updateSavedSearchesBadge();
     window.closeSaveSearchDialog();
 
-    alert(`🎉 ¡Lista "${name}" guardada con éxito en tu cuenta de Firebase! Puedes acceder a ella en cualquier momento desde el botón "Mis Listas".`);
+    const pinMsg = isPinnedSaving ? ` con los ${placesToSave.length} locales pineados` : '';
+    showAppToast(`🎉 ¡Lista "${name}" guardada${pinMsg}!`, 'success');
+    alert(`🎉 ¡Lista "${name}" guardada con éxito en "Mis Listas"${pinMsg}! Puedes acceder a ella en cualquier momento.`);
   };
 
   window.openSavedSearchesModal = function() {
@@ -2032,7 +2048,13 @@ import * as fb from './firebase-service.js';
         if (!places.some(existing => existing.id === p.id)) {
           places.push(p);
         }
+        if (search.isPinnedList) {
+          pinnedPlaceIds.add(p.id);
+        }
       });
+      if (search.isPinnedList) {
+        savePinnedPlaces();
+      }
     }
 
     // 2. Verificar cuántos locales coinciden actualmente en memoria
@@ -2639,47 +2661,85 @@ import * as fb from './firebase-service.js';
   window.clearSearchHistory = async function() {
     if (!places || places.length === 0) return;
 
-    if (confirm("¿Deseas limpiar el historial de búsquedas y dejar el panel vacío?")) {
-      // 1. Vaciar locales en memoria
-      places = [];
-      activeSearchQuery = '';
-      currentZoneIndex = 0;
-      activeSavedSearchId = null;
-      activeSavedSearchName = '';
+    const pinnedPlaces = places.filter(p => isPlacePinned(p.id));
+    const hasPinned = pinnedPlaces.length > 0;
 
-      // 2. Limpiar input del buscador y ocultar banner de búsqueda
-      const searchInput = document.getElementById('search-query-input');
-      if (searchInput) searchInput.value = '';
-      hideActiveListBanner();
+    const confirmMsg = hasPinned
+      ? `¿Deseas limpiar el historial de búsquedas? Se conservarán en el mapa y la lista los ${pinnedPlaces.length} locales que fijaste con PIN.`
+      : "¿Deseas limpiar el historial de búsquedas y dejar el panel vacío?";
 
-      // 3. Cerrar ficha si estaba abierta
-      window.closePlaceDrawer();
+    if (confirm(confirmMsg)) {
+      if (hasPinned) {
+        // 1. Conservar ÚNICAMENTE los locales fijados con PIN
+        places = pinnedPlaces;
+        activeSearchQuery = '';
+        currentZoneIndex = 0;
+        activeSavedSearchId = null;
+        activeSavedSearchName = '';
 
-      // 4. Limpiar marcadores del mapa (manteniendo la ubicación GPS del usuario)
-      if (markers) {
-        Object.values(markers).forEach(m => {
-          if (m.map) m.map = null;
-          else if (m.setMap) m.setMap(null);
-        });
-        markers = {};
-      }
+        // 2. Limpiar input del buscador y ocultar banner de búsqueda
+        const searchInput = document.getElementById('search-query-input');
+        if (searchInput) searchInput.value = '';
+        hideActiveListBanner();
 
-      // 5. Guardar base vacía en localStorage
-      window.saveStoredPlaces([]);
+        // 3. Cerrar ficha si estaba abierta
+        window.closePlaceDrawer();
 
-      // 6. Si está conectado a Firebase, limpiar la colección de locales en Firestore
-      if (currentUser) {
-        try {
-          await fb.clearAllUserPlaces(currentUser.uid);
-          updateSyncBadge(true, `Sincronizado (0 locales)`);
-        } catch (e) {
-          console.warn("Error limpiando locales en Firestore:", e);
+        // 4. Guardar únicamente los pineados en localStorage
+        window.saveStoredPlaces(places);
+
+        // 5. Si está conectado a Firebase, sincronizar solo los pineados
+        if (currentUser) {
+          try {
+            await fb.clearAllUserPlaces(currentUser.uid);
+            await fb.saveUserPlacesBatch(currentUser.uid, places);
+            updateSyncBadge(true, `Sincronizado (${places.length} pines)`);
+          } catch (e) {
+            console.warn("Error sincronizando locales en Firestore:", e);
+          }
         }
-      }
 
-      // 7. Renderizar panel vacío ("Esperando búsqueda") y actualizar contadores
-      renderPlacesList();
-      updateStatsCounter();
+        // 6. Re-renderizar marcadores del mapa (quedan solo los pines) y lista
+        await renderCurrentMapMarkers();
+        renderPlacesList();
+        updateStatsCounter();
+        showAppToast(`Historial limpiado. Se mantuvieron ${places.length} pines en el mapa.`, 'info');
+      } else {
+        // Sin pines: vaciar completamente
+        places = [];
+        activeSearchQuery = '';
+        currentZoneIndex = 0;
+        activeSavedSearchId = null;
+        activeSavedSearchName = '';
+
+        const searchInput = document.getElementById('search-query-input');
+        if (searchInput) searchInput.value = '';
+        hideActiveListBanner();
+        window.closePlaceDrawer();
+
+        if (markers) {
+          Object.values(markers).forEach(m => {
+            if (m.map) m.map = null;
+            else if (m.setMap) m.setMap(null);
+          });
+          markers = {};
+        }
+
+        window.saveStoredPlaces([]);
+
+        if (currentUser) {
+          try {
+            await fb.clearAllUserPlaces(currentUser.uid);
+            updateSyncBadge(true, `Sincronizado (0 locales)`);
+          } catch (e) {
+            console.warn("Error limpiando locales en Firestore:", e);
+          }
+        }
+
+        renderPlacesList();
+        updateStatsCounter();
+        showAppToast("Historial de búsqueda limpiado.", 'info');
+      }
     }
   };
 
