@@ -2061,157 +2061,133 @@ import * as fb from './firebase-service.js';
   window.selectPlaceFromList = function(id) {
     const place = places.find(p => p.id === id);
     if (!place) return;
-
-    if (window.innerWidth < 768) {
-      window.switchMobileTab('map');
-    }
-
     centerMapOnCoord(place.lat, place.lng);
     openPlaceDrawer(place);
   };
 
   // ==========================================
-  // ESTADO DEL DRAWER MOBILE-FIRST (PEEK / EXPANDIDO)
+  // PANEL FICHA DE NEGOCIO (PANEL FIJO LATERAL / MOBILE TAB)
   // ==========================================
-  let drawerMode = 'closed'; // 'closed', 'peek', 'expanded'
+  let drawerMode = 'closed';
 
   function openPlaceDrawer(place) {
     selectedPlace = place;
     updateSelectedMarkerHighlight(place.id);
     renderPlacesList();
 
-    const drawer = document.getElementById('place-drawer');
-    const backdrop = document.getElementById('place-drawer-backdrop');
-    const isMobile = window.innerWidth < 768;
+    // Mostrar el panel de ficha fijo
+    const fichaPanel = document.getElementById('place-detail-panel');
+    if (fichaPanel) {
+      fichaPanel.classList.remove('hidden');
+      fichaPanel.classList.add('flex');
+    }
+    drawerMode = 'expanded';
 
-    if (drawer) {
-      drawer.style.transform = '';
-      drawer.classList.remove('translate-y-full', 'pointer-events-none', 'opacity-0');
-      drawer.classList.add('translate-y-0', 'opacity-100');
-
-      // Abrir directamente en modo visible completo para que el usuario vea toda la información y CRM de un vistazo
-      expandDrawer();
+    // Activar botón de tab Ficha
+    const navFicha = document.getElementById('nav-btn-ficha');
+    if (navFicha) {
+      navFicha.classList.remove('opacity-40');
     }
 
-    // Ocultar FAB GPS en mobile mientras el drawer está abierto
-    const fabGps = document.getElementById('btn-fab-gps');
-    if (fabGps && window.innerWidth < 768) {
-      fabGps.classList.add('hidden');
+    // En vista móvil, cambiar automáticamente a la pestaña de Ficha
+    if (window.innerWidth < 768) {
+      window.switchMobileTab('ficha');
     }
 
-    document.getElementById('drawer-title').innerText = place.name;
-    document.getElementById('drawer-category').innerText = place.category;
-    document.getElementById('drawer-address-text').innerText = place.address;
-    document.getElementById('drawer-rating-num').innerText = place.rating > 0 ? place.rating : 'N/A';
-    document.getElementById('drawer-reviews-count').innerText = `(${place.reviewCount})`;
-    document.getElementById('drawer-open-status').innerText = place.openStatus || 'Consultar';
+    // Rellenar información de la ficha
+    const titleEl = document.getElementById('drawer-title');
+    if (titleEl) titleEl.innerText = place.name;
+    const catEl = document.getElementById('drawer-category');
+    if (catEl) catEl.innerText = place.category;
+    const addrEl = document.getElementById('drawer-address-text');
+    if (addrEl) addrEl.innerText = place.address;
+    const ratingEl = document.getElementById('drawer-rating-num');
+    if (ratingEl) ratingEl.innerText = place.rating > 0 ? place.rating : 'N/A';
+    const reviewsEl = document.getElementById('drawer-reviews-count');
+    if (reviewsEl) reviewsEl.innerText = `(${place.reviewCount})`;
+    const openStatusEl = document.getElementById('drawer-open-status');
+    if (openStatusEl) openStatusEl.innerText = place.openStatus || 'Consultar';
 
     const photoImg = document.getElementById('drawer-photo');
     const photoContainer = document.getElementById('drawer-photo-container');
     if (place.photos && place.photos.length > 0) {
-      photoImg.src = place.photos[0];
+      if (photoImg) photoImg.src = place.photos[0];
       if (photoContainer) photoContainer.classList.remove('hidden');
     } else {
       if (photoContainer) photoContainer.classList.add('hidden');
     }
 
     const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`;
-    document.getElementById('drawer-btn-directions').href = directionsUrl;
+    const btnDirections = document.getElementById('drawer-btn-directions');
+    if (btnDirections) btnDirections.href = directionsUrl;
     const gmapsBtn = document.getElementById('drawer-btn-gmaps');
     if (gmapsBtn) gmapsBtn.href = place.googleMapsUrl || directionsUrl;
 
     const btnWeb = document.getElementById('drawer-btn-web');
-    if (place.website && place.website.trim().length > 3) {
-      btnWeb.href = place.website;
-      btnWeb.classList.remove('opacity-40', 'pointer-events-none');
-      btnWeb.innerHTML = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg> Web`;
-    } else {
-      btnWeb.href = "#";
-      btnWeb.classList.add('opacity-40', 'pointer-events-none');
-      btnWeb.innerHTML = `<span class="line-through text-[#70757a]">Sin web</span>`;
+    if (btnWeb) {
+      if (place.website && place.website.trim().length > 3) {
+        btnWeb.href = place.website;
+        btnWeb.classList.remove('opacity-40', 'pointer-events-none');
+        btnWeb.innerHTML = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg> Web`;
+      } else {
+        btnWeb.href = "#";
+        btnWeb.classList.add('opacity-40', 'pointer-events-none');
+        btnWeb.innerHTML = `<span class="line-through text-[#70757a]">Sin web</span>`;
+      }
     }
 
     const btnCall = document.getElementById('drawer-btn-call');
-    if (place.phone) {
-      btnCall.href = `tel:${place.phone.replace(/[^0-9+]/g, '')}`;
-      btnCall.classList.remove('hidden');
-    } else {
-      btnCall.classList.add('hidden');
+    if (btnCall) {
+      if (place.phone) {
+        btnCall.href = `tel:${place.phone.replace(/[^0-9+]/g, '')}`;
+        btnCall.classList.remove('hidden');
+      } else {
+        btnCall.classList.add('hidden');
+      }
     }
 
     const btnWhatsapp = document.getElementById('drawer-btn-whatsapp');
-    if (place.phone) {
-      let rawPhone = place.phone.replace(/[^0-9]/g, '');
-      if (rawPhone.startsWith('54') && !rawPhone.startsWith('549')) {
-        rawPhone = '549' + rawPhone.slice(2);
-      } else if (!rawPhone.startsWith('54')) {
-        rawPhone = '549' + rawPhone;
+    if (btnWhatsapp) {
+      if (place.phone) {
+        let rawPhone = place.phone.replace(/[^0-9]/g, '');
+        if (rawPhone.startsWith('54') && !rawPhone.startsWith('549')) {
+          rawPhone = '549' + rawPhone.slice(2);
+        } else if (!rawPhone.startsWith('54')) {
+          rawPhone = '549' + rawPhone;
+        }
+        const msg = encodeURIComponent(`Hola ${place.name}, nos comunicamos para acercarles una propuesta de posicionamiento en Google Maps y captación de clientes en Santa Fe.`);
+        btnWhatsapp.href = `https://wa.me/${rawPhone}?text=${msg}`;
+        btnWhatsapp.classList.remove('hidden');
+      } else {
+        btnWhatsapp.classList.add('hidden');
       }
-      const msg = encodeURIComponent(`Hola ${place.name}, nos comunicamos para acercarles una propuesta de posicionamiento en Google Maps y captación de clientes en Santa Fe.`);
-      btnWhatsapp.href = `https://wa.me/${rawPhone}?text=${msg}`;
-      btnWhatsapp.classList.remove('hidden');
-    } else {
-      btnWhatsapp.classList.add('hidden');
     }
 
     renderOpportunityAudit(place);
 
-    // Seleccionar la píldora de estado activa
+    // Seleccionar píldora de estado activa
     window.setVisitStatus(place.visitStatus || 'pending');
 
-    document.getElementById('visit-contact-name').value = place.contactName || '';
-    document.getElementById('visit-contact-phone').value = place.contactPhone || '';
-    document.getElementById('visit-notes').value = place.notes || '';
-  }
+    const contactName = document.getElementById('visit-contact-name');
+    if (contactName) contactName.value = place.contactName || '';
+    const contactPhone = document.getElementById('visit-contact-phone');
+    if (contactPhone) contactPhone.value = place.contactPhone || '';
+    const visitNotes = document.getElementById('visit-notes');
+    if (visitNotes) visitNotes.value = place.notes || '';
 
-  // Al tocar la cabecera en modo expanded → cerrar directamente (más intuitivo en mobile)
-  window.handleDrawerHeaderClick = function() {
-    if (window.innerWidth >= 768) return;
-    if (drawerMode === 'peek') {
-      expandDrawer();
-    } else if (drawerMode === 'expanded') {
-      window.closePlaceDrawer();
-    }
-  };
-
-  function expandDrawer() {
-    const drawer = document.getElementById('place-drawer');
-    const backdrop = document.getElementById('place-drawer-backdrop');
-    const hint = document.getElementById('drawer-expand-hint');
-
-    drawerMode = 'expanded';
-    if (drawer) {
-      drawer.style.maxHeight = window.innerWidth >= 768 ? 'calc(100% - 24px)' : '85%';
-      drawer.style.height = 'auto';
-    }
-    if (backdrop && window.innerWidth < 768) {
-      backdrop.classList.remove('hidden', 'pointer-events-none', 'opacity-0');
-      backdrop.classList.add('opacity-100');
-    }
-    if (hint) hint.innerText = "Toca para minimizar";
-  }
-
-  function collapseDrawerToPeek() {
-    const drawer = document.getElementById('place-drawer');
-    const backdrop = document.getElementById('place-drawer-backdrop');
-    const hint = document.getElementById('drawer-expand-hint');
     const scrollBody = document.getElementById('drawer-scroll-body');
-
-    drawerMode = 'peek';
-    if (drawer) {
-      drawer.style.maxHeight = '145px';
-      drawer.style.height = 'auto';
-    }
-    if (backdrop) {
-      backdrop.classList.remove('opacity-100');
-      backdrop.classList.add('opacity-0', 'pointer-events-none');
-      setTimeout(() => {
-        if (drawerMode === 'peek' && backdrop) backdrop.classList.add('hidden');
-      }, 250);
-    }
-    if (hint) hint.innerText = "Toca para expandir ficha";
     if (scrollBody) scrollBody.scrollTop = 0;
+
+    // Redimensionar mapa en desktop si es necesario
+    if (googleMapInstance && window.google && window.google.maps) {
+      google.maps.event?.trigger?.(googleMapInstance, 'resize');
+    }
   }
+
+  // Funciones auxiliares para compatibilidad
+  window.handleDrawerHeaderClick = function() {};
+  function expandDrawer() {}
+  function collapseDrawerToPeek() {}
 
   // Píldoras de 1 Toque para Selección Rápida de Estado CRM
   window.setVisitStatus = function(status) {
@@ -2227,13 +2203,44 @@ import * as fb from './firebase-service.js';
     });
   };
 
-  // Barra de Navegación Inferior (Thumb Bar)
+  // Barra de Navegación Inferior (Thumb Bar) con soporte para Mapa, Lista y Ficha
   window.switchMobileTab = function(tab) {
     const listView = document.getElementById('places-list-panel');
     const mapView = document.getElementById('map-panel');
+    const fichaView = document.getElementById('place-detail-panel');
     const btnMap = document.getElementById('nav-btn-map');
     const btnList = document.getElementById('nav-btn-list');
-    const btnToggle = document.getElementById('btn-toggle-view');
+    const btnFicha = document.getElementById('nav-btn-ficha');
+
+    const styleInactive = "flex flex-col items-center justify-center py-1 px-2 text-[#5f6368] font-normal text-[10px] active:scale-95 transition-transform min-w-0";
+    const styleActive = "flex flex-col items-center justify-center py-1 px-2 text-[#1a73e8] font-bold text-[10px] active:scale-95 transition-transform min-w-0";
+
+    if (tab === 'ficha') {
+      if (!selectedPlace) {
+        if (typeof window.showAppToast === 'function') {
+          window.showAppToast("Selecciona un comercio en el mapa o lista para ver su ficha.", 'info');
+        }
+        return;
+      }
+
+      if (listView) {
+        listView.classList.add('hidden');
+        listView.classList.remove('flex');
+      }
+      if (mapView) mapView.classList.add('hidden');
+      if (fichaView) {
+        fichaView.classList.remove('hidden');
+        fichaView.classList.add('flex');
+      }
+
+      if (btnMap) btnMap.className = styleInactive;
+      if (btnList) btnList.className = styleInactive + " relative";
+      if (btnFicha) {
+        btnFicha.className = styleActive;
+        btnFicha.classList.remove('opacity-40');
+      }
+      return;
+    }
 
     if (tab === 'list') {
       if (listView) {
@@ -2241,22 +2248,38 @@ import * as fb from './firebase-service.js';
         listView.classList.add('flex');
       }
       if (mapView) mapView.classList.add('hidden');
-      if (btnMap) btnMap.className = "flex flex-col items-center justify-center py-1 px-3 text-slate-500 font-medium text-[11px] active:scale-95 transition-transform";
-      if (btnList) btnList.className = "flex flex-col items-center justify-center py-1 px-3 text-blue-600 font-bold text-[11px] active:scale-95 transition-transform relative";
-      if (btnToggle) btnToggle.innerHTML = `<span>Mapa</span>`;
-      window.closePlaceDrawer();
-    } else {
-      if (listView) {
-        listView.classList.add('hidden');
-        listView.classList.remove('flex');
+      if (fichaView && window.innerWidth < 768) {
+        fichaView.classList.add('hidden');
+        fichaView.classList.remove('flex');
       }
-      if (mapView) mapView.classList.remove('hidden');
-      if (btnMap) btnMap.className = "flex flex-col items-center justify-center py-1 px-3 text-blue-600 font-bold text-[11px] active:scale-95 transition-transform";
-      if (btnList) btnList.className = "flex flex-col items-center justify-center py-1 px-3 text-slate-500 font-medium text-[11px] active:scale-95 transition-transform relative";
-      if (btnToggle) btnToggle.innerHTML = `<span>Lista</span>`;
-      if (googleMapInstance && window.google && window.google.maps) {
-        google.maps.event?.trigger?.(googleMapInstance, 'resize');
+
+      if (btnMap) btnMap.className = styleInactive;
+      if (btnList) btnList.className = styleActive + " relative";
+      if (btnFicha) {
+        btnFicha.className = styleInactive + (selectedPlace ? "" : " opacity-40");
       }
+      return;
+    }
+
+    // Por defecto: 'map'
+    if (listView) {
+      listView.classList.add('hidden');
+      listView.classList.remove('flex');
+    }
+    if (mapView) mapView.classList.remove('hidden');
+    if (fichaView && window.innerWidth < 768) {
+      fichaView.classList.add('hidden');
+      fichaView.classList.remove('flex');
+    }
+
+    if (btnMap) btnMap.className = styleActive;
+    if (btnList) btnList.className = styleInactive + " relative";
+    if (btnFicha) {
+      btnFicha.className = styleInactive + (selectedPlace ? "" : " opacity-40");
+    }
+
+    if (googleMapInstance && window.google && window.google.maps) {
+      google.maps.event?.trigger?.(googleMapInstance, 'resize');
     }
   };
 
@@ -2287,87 +2310,32 @@ import * as fb from './firebase-service.js';
   }
 
   window.closePlaceDrawer = function() {
-    const drawer = document.getElementById('place-drawer');
-    if (drawer) {
-      drawer.style.transform = '';
-      drawer.classList.remove('translate-y-0', 'opacity-100');
-      drawer.classList.add('translate-y-full', 'opacity-0', 'pointer-events-none');
+    const fichaPanel = document.getElementById('place-detail-panel');
+    if (fichaPanel) {
+      fichaPanel.classList.add('hidden');
+      fichaPanel.classList.remove('flex');
     }
-    const backdrop = document.getElementById('place-drawer-backdrop');
-    if (backdrop) {
-      backdrop.classList.remove('opacity-100');
-      backdrop.classList.add('opacity-0', 'pointer-events-none');
-      setTimeout(() => {
-        if (backdrop && backdrop.classList.contains('opacity-0')) {
-          backdrop.classList.add('hidden');
-        }
-      }, 250);
-    }
-    // Restaurar FAB GPS al cerrar el drawer en mobile
-    const fabGps = document.getElementById('btn-fab-gps');
-    if (fabGps) fabGps.classList.remove('hidden');
 
     drawerMode = 'closed';
     selectedPlace = null;
     updateSelectedMarkerHighlight(null);
     renderPlacesList();
+
+    const navFicha = document.getElementById('nav-btn-ficha');
+    if (navFicha) {
+      navFicha.className = "flex flex-col items-center justify-center py-1 px-2 text-[#5f6368] font-normal text-[10px] active:scale-95 transition-transform min-w-0 opacity-40";
+    }
+
+    if (window.innerWidth < 768) {
+      window.switchMobileTab('map');
+    } else {
+      if (googleMapInstance && window.google && window.google.maps) {
+        google.maps.event?.trigger?.(googleMapInstance, 'resize');
+      }
+    }
   };
 
-  function initDrawerGestures() {
-    const drawer = document.getElementById('place-drawer');
-    const dragHandle = document.getElementById('drawer-drag-handle');
-    const headerPeek = document.getElementById('drawer-header-peek');
-    if (!drawer) return;
-
-    let startY = 0;
-    let currentY = 0;
-    let isDragging = false;
-
-    const touchTarget = dragHandle || headerPeek;
-
-    if (touchTarget) {
-      touchTarget.addEventListener('touchstart', (e) => {
-        if (e.target.closest('button') || e.target.closest('a')) return;
-        startY = e.touches[0].clientY;
-        currentY = startY;
-        isDragging = true;
-      }, { passive: true });
-
-      touchTarget.addEventListener('touchmove', (e) => {
-        if (!isDragging) return;
-        currentY = e.touches[0].clientY;
-        const diff = currentY - startY;
-
-        if (drawerMode === 'expanded' && diff > 0) {
-          drawer.style.transform = `translateY(${diff}px)`;
-        } else if (drawerMode === 'peek' && diff < 0) {
-          drawer.style.transform = `translateY(${diff}px)`;
-        }
-      }, { passive: true });
-
-      touchTarget.addEventListener('touchend', () => {
-        if (!isDragging) return;
-        isDragging = false;
-        const diff = currentY - startY;
-        drawer.style.transform = '';
-
-        if (drawerMode === 'expanded') {
-          if (diff > 90) {
-            collapseDrawerToPeek();
-          }
-        } else if (drawerMode === 'peek') {
-          if (diff < -40) {
-            expandDrawer();
-          } else if (diff > 70) {
-            window.closePlaceDrawer();
-          }
-        }
-
-        startY = 0;
-        currentY = 0;
-      });
-    }
-  }
+  function initDrawerGestures() {}
 
   // ==========================================
   // CRM: GUARDAR VISITA (FIREBASE CLOUD)
