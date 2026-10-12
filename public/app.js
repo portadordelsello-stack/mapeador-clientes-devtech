@@ -18,6 +18,32 @@ import * as fb from './firebase-service.js';
   let googleMapInstance = null;
   let userLocationMarker = null;
 
+  // Almacenamiento y estado de pines fijos en el mapa
+  const PINNED_STORAGE_KEY = 'geoprospector_pinned_ids_v1';
+  let pinnedPlaceIds = new Set();
+
+  function loadPinnedPlaces() {
+    try {
+      const raw = localStorage.getItem(PINNED_STORAGE_KEY);
+      if (raw) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) pinnedPlaceIds = new Set(arr);
+      }
+    } catch (e) {}
+  }
+
+  function savePinnedPlaces() {
+    try {
+      localStorage.setItem(PINNED_STORAGE_KEY, JSON.stringify(Array.from(pinnedPlaceIds)));
+    } catch (e) {}
+  }
+
+  function isPlacePinned(placeId) {
+    return Boolean(placeId && pinnedPlaceIds.has(placeId));
+  }
+
+  loadPinnedPlaces();
+
   // Iconos SVG y Colores según categoría para Google Maps PinElement (Paleta oficial Google Maps)
   const CATEGORY_COLORS = {
     supermarket: '#188038', // Verde Google Maps (mercados y alimentos)
@@ -852,34 +878,56 @@ import * as fb from './firebase-service.js';
     markers = {};
 
     const filtered = getFilteredPlaces();
+    // Asegurar que los locales fijados con pin permanezcan siempre visibles en el mapa
+    const pinnedNotInFiltered = places.filter(p => isPlacePinned(p.id) && !filtered.some(f => f.id === p.id));
+    const placesToRender = [...filtered, ...pinnedNotInFiltered];
 
     try {
       const { AdvancedMarkerElement, PinElement } = await getGoogleMapsLibrary("marker");
 
-      filtered.forEach(place => {
+      placesToRender.forEach(place => {
         const color = CATEGORY_COLORS[place.categoryType] || CATEGORY_COLORS.general;
         const isSelected = selectedPlace && selectedPlace.id === place.id;
-        const glyphIcon = getPlaceCategoryIcon(place);
+        const isPinned = isPlacePinned(place.id);
+        const glyphIcon = isPinned ? '📌' : getPlaceCategoryIcon(place);
 
-        // Si está seleccionado: color blanco con icono del rubro (ej: 🥖, 🦷, 🛒)
-        const pin = isSelected ? new PinElement({
-          background: '#ffffff',
-          borderColor: '#1a73e8',
-          glyph: glyphIcon,
-          scale: 1.35
-        }) : new PinElement({
-          background: color,
-          borderColor: '#ffffff',
-          glyphColor: '#ffffff',
-          scale: 1.05
-        });
+        let pin;
+        if (isSelected && isPinned) {
+          pin = new PinElement({
+            background: '#ffffff',
+            borderColor: '#d93025',
+            glyph: '📌',
+            scale: 1.4
+          });
+        } else if (isSelected) {
+          pin = new PinElement({
+            background: '#ffffff',
+            borderColor: '#1a73e8',
+            glyph: glyphIcon,
+            scale: 1.35
+          });
+        } else if (isPinned) {
+          pin = new PinElement({
+            background: '#ffffff',
+            borderColor: '#d93025',
+            glyph: '📌',
+            scale: 1.25
+          });
+        } else {
+          pin = new PinElement({
+            background: color,
+            borderColor: '#ffffff',
+            glyphColor: '#ffffff',
+            scale: 1.05
+          });
+        }
 
         const marker = new AdvancedMarkerElement({
           position: { lat: place.lat, lng: place.lng },
           map: googleMapInstance,
-          title: place.name,
+          title: place.name + (isPinned ? ' 📌 (Fijado)' : ''),
           content: pin.element || pin,
-          zIndex: isSelected ? 9999 : 1
+          zIndex: isSelected ? 9999 : (isPinned ? 500 : 1)
         });
 
         marker._placeData = place;
@@ -894,19 +942,21 @@ import * as fb from './firebase-service.js';
       });
     } catch (e) {
       console.warn("AdvancedMarkerElement no disponible, usando Marker estándar:", e);
-      filtered.forEach(place => {
+      placesToRender.forEach(place => {
         const isSelected = selectedPlace && selectedPlace.id === place.id;
-        const glyphIcon = getPlaceCategoryIcon(place);
+        const isPinned = isPlacePinned(place.id);
+        const glyphIcon = isPinned ? '📌' : getPlaceCategoryIcon(place);
+        const stroke = isPinned ? '#d93025' : '#1a73e8';
 
         const marker = new google.maps.Marker({
           position: { lat: place.lat, lng: place.lng },
           map: googleMapInstance,
-          title: place.name,
-          zIndex: isSelected ? 9999 : 1
+          title: place.name + (isPinned ? ' 📌' : ''),
+          zIndex: isSelected ? 9999 : (isPinned ? 500 : 1)
         });
 
-        if (isSelected) {
-          const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48"><path fill="#ffffff" stroke="#1a73e8" stroke-width="2" d="M18 1 C9 1 1 9 1 18 C1 28 18 47 18 47 C18 47 35 28 35 18 C35 9 27 1 18 1 Z"/><text x="18" y="22" font-size="16" text-anchor="middle" dominant-baseline="central">${glyphIcon}</text></svg>`;
+        if (isSelected || isPinned) {
+          const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48"><path fill="#ffffff" stroke="${stroke}" stroke-width="2" d="M18 1 C9 1 1 9 1 18 C1 28 18 47 18 47 C18 47 35 28 35 18 C35 9 27 1 18 1 Z"/><text x="18" y="22" font-size="16" text-anchor="middle" dominant-baseline="central">${glyphIcon}</text></svg>`;
           marker.setIcon({
             url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
             scaledSize: new google.maps.Size(36, 48)
@@ -923,31 +973,46 @@ import * as fb from './firebase-service.js';
     }
   }
 
-  // Actualiza dinámicamente el marcador seleccionado para que sea blanco con icono del rubro
+  // Actualiza dinámicamente el marcador seleccionado para que sea blanco con icono del rubro o pin
   async function updateSelectedMarkerHighlight(selectedPlaceId) {
     if (!googleMapInstance) return;
 
     try {
       const { PinElement } = await getGoogleMapsLibrary("marker");
 
-      // 1. Restaurar el marcador previamente seleccionado a su color original
+      // 1. Restaurar el marcador previamente seleccionado
       if (activeSelectedMarkerId && activeSelectedMarkerId !== selectedPlaceId && markers[activeSelectedMarkerId]) {
         const prevMarker = markers[activeSelectedMarkerId];
         const prevPlace = prevMarker._placeData || places.find(p => p.id === activeSelectedMarkerId);
         if (prevPlace) {
+          const isPrevPinned = isPlacePinned(prevPlace.id);
           const defaultColor = prevMarker._defaultColor || CATEGORY_COLORS[prevPlace.categoryType] || CATEGORY_COLORS.general;
           if (PinElement && prevMarker.content !== undefined) {
-            const defaultPin = new PinElement({
+            const restoredPin = isPrevPinned ? new PinElement({
+              background: '#ffffff',
+              borderColor: '#d93025',
+              glyph: '📌',
+              scale: 1.25
+            }) : new PinElement({
               background: defaultColor,
               borderColor: '#ffffff',
               glyphColor: '#ffffff',
               scale: 1.05
             });
-            prevMarker.content = defaultPin.element || defaultPin;
-            prevMarker.zIndex = 1;
+            prevMarker.content = restoredPin.element || restoredPin;
+            prevMarker.zIndex = isPrevPinned ? 500 : 1;
           } else if (prevMarker.setIcon) {
-            prevMarker.setIcon(null);
-            prevMarker.setZIndex(1);
+            if (isPrevPinned) {
+              const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48"><path fill="#ffffff" stroke="#d93025" stroke-width="2" d="M18 1 C9 1 1 9 1 18 C1 28 18 47 18 47 C18 47 35 28 35 18 C35 9 27 1 18 1 Z"/><text x="18" y="22" font-size="16" text-anchor="middle" dominant-baseline="central">📌</text></svg>`;
+              prevMarker.setIcon({
+                url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+                scaledSize: new google.maps.Size(36, 48)
+              });
+              prevMarker.setZIndex(500);
+            } else {
+              prevMarker.setIcon(null);
+              prevMarker.setZIndex(1);
+            }
           }
         }
       }
@@ -958,23 +1023,25 @@ import * as fb from './firebase-service.js';
         return;
       }
 
-      // 3. Aplicar color blanco e icono del rubro al marcador recién seleccionado
+      // 3. Aplicar estilo al marcador recién seleccionado
       const targetMarker = markers[selectedPlaceId];
       const targetPlace = targetMarker._placeData || places.find(p => p.id === selectedPlaceId);
-      const glyphIcon = getPlaceCategoryIcon(targetPlace);
+      const isTargetPinned = isPlacePinned(selectedPlaceId);
+      const glyphIcon = isTargetPinned ? '📌' : getPlaceCategoryIcon(targetPlace);
+      const borderColor = isTargetPinned ? '#d93025' : '#1a73e8';
       activeSelectedMarkerId = selectedPlaceId;
 
       if (PinElement && targetMarker.content !== undefined) {
-        const rocketPin = new PinElement({
+        const selectedPin = new PinElement({
           background: '#ffffff',
-          borderColor: '#1a73e8', // Borde azul Google Maps para contraste de alta nitidez
+          borderColor: borderColor,
           glyph: glyphIcon,
-          scale: 1.35 // Destacado visualmente
+          scale: 1.35
         });
-        targetMarker.content = rocketPin.element || rocketPin;
-        targetMarker.zIndex = 9999; // Siempre al frente
+        targetMarker.content = selectedPin.element || selectedPin;
+        targetMarker.zIndex = 9999;
       } else if (targetMarker.setIcon) {
-        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48"><path fill="#ffffff" stroke="#1a73e8" stroke-width="2" d="M18 1 C9 1 1 9 1 18 C1 28 18 47 18 47 C18 47 35 28 35 18 C35 9 27 1 18 1 Z"/><text x="18" y="22" font-size="16" text-anchor="middle" dominant-baseline="central">${glyphIcon}</text></svg>`;
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48"><path fill="#ffffff" stroke="${borderColor}" stroke-width="2" d="M18 1 C9 1 1 9 1 18 C1 28 18 47 18 47 C18 47 35 28 35 18 C35 9 27 1 18 1 Z"/><text x="18" y="22" font-size="16" text-anchor="middle" dominant-baseline="central">${glyphIcon}</text></svg>`;
         targetMarker.setIcon({
           url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
           scaledSize: new google.maps.Size(36, 48)
@@ -983,6 +1050,142 @@ import * as fb from './firebase-service.js';
       }
     } catch (err) {
       console.warn("Error al actualizar icono en marcador seleccionado:", err);
+    }
+  }
+
+  // Actualiza inmediatamente la visualización de un marcador cuando se fija/desfija
+  async function updateMarkerPinVisual(placeId) {
+    if (!googleMapInstance) return;
+    const place = places.find(p => p.id === placeId);
+    if (!place) return;
+
+    const isPinned = isPlacePinned(placeId);
+    const isSelected = selectedPlace && selectedPlace.id === placeId;
+    const color = CATEGORY_COLORS[place.categoryType] || CATEGORY_COLORS.general;
+    const glyphIcon = isPinned ? '📌' : getPlaceCategoryIcon(place);
+
+    try {
+      const { PinElement, AdvancedMarkerElement } = await getGoogleMapsLibrary("marker");
+      let marker = markers[placeId];
+
+      // Si el local fue fijado pero no tenía marcador en pantalla, crearlo
+      if (!marker && isPinned && AdvancedMarkerElement && PinElement) {
+        const pin = new PinElement({
+          background: '#ffffff',
+          borderColor: '#d93025',
+          glyph: '📌',
+          scale: 1.25
+        });
+        marker = new AdvancedMarkerElement({
+          position: { lat: place.lat, lng: place.lng },
+          map: googleMapInstance,
+          title: place.name + ' 📌 (Fijado)',
+          content: pin.element || pin,
+          zIndex: 500
+        });
+        marker._placeData = place;
+        marker._defaultColor = color;
+        marker.addListener('click', () => {
+          openPlaceDrawer(place);
+        });
+        markers[place.id] = marker;
+        return;
+      }
+
+      if (marker) {
+        if (PinElement && marker.content !== undefined) {
+          let pin;
+          if (isSelected) {
+            pin = new PinElement({
+              background: '#ffffff',
+              borderColor: isPinned ? '#d93025' : '#1a73e8',
+              glyph: glyphIcon,
+              scale: 1.35
+            });
+            marker.zIndex = 9999;
+          } else if (isPinned) {
+            pin = new PinElement({
+              background: '#ffffff',
+              borderColor: '#d93025',
+              glyph: '📌',
+              scale: 1.25
+            });
+            marker.zIndex = 500;
+          } else {
+            pin = new PinElement({
+              background: color,
+              borderColor: '#ffffff',
+              glyphColor: '#ffffff',
+              scale: 1.05
+            });
+            marker.zIndex = 1;
+          }
+          marker.content = pin.element || pin;
+        } else if (marker.setIcon) {
+          if (isPinned || isSelected) {
+            const stroke = isPinned ? '#d93025' : '#1a73e8';
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48"><path fill="#ffffff" stroke="${stroke}" stroke-width="2" d="M18 1 C9 1 1 9 1 18 C1 28 18 47 18 47 C18 47 35 28 35 18 C35 9 27 1 18 1 Z"/><text x="18" y="22" font-size="16" text-anchor="middle" dominant-baseline="central">${glyphIcon}</text></svg>`;
+            marker.setIcon({
+              url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+              scaledSize: new google.maps.Size(36, 48)
+            });
+            marker.setZIndex(isSelected ? 9999 : (isPinned ? 500 : 1));
+          } else {
+            marker.setIcon(null);
+            marker.setZIndex(1);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Error actualizando visual de pin:", e);
+    }
+  }
+
+  // Alterna el estado de fijado con pin de un local
+  window.togglePinPlace = async function(placeId) {
+    if (!placeId) return;
+    const place = places.find(p => p.id === placeId);
+    if (!place) return;
+
+    if (pinnedPlaceIds.has(placeId)) {
+      pinnedPlaceIds.delete(placeId);
+      place.isPinned = false;
+      showAppToast(`Pin quitado: "${place.name}"`, 'info');
+    } else {
+      pinnedPlaceIds.add(placeId);
+      place.isPinned = true;
+      showAppToast(`📌 Local fijado en el mapa: "${place.name}"`, 'info');
+    }
+
+    savePinnedPlaces();
+    window.saveStoredPlaces(places);
+
+    await updateMarkerPinVisual(placeId);
+    renderPlacesList();
+
+    if (selectedPlace && selectedPlace.id === placeId) {
+      updateDrawerPinButton(placeId);
+    }
+  };
+
+  window.togglePinCurrentPlace = function() {
+    if (selectedPlace) {
+      window.togglePinPlace(selectedPlace.id);
+    }
+  };
+
+  function updateDrawerPinButton(placeId) {
+    const btn = document.getElementById('drawer-btn-pin');
+    const label = document.getElementById('drawer-btn-pin-label');
+    if (!btn || !label) return;
+
+    const isPinned = isPlacePinned(placeId);
+    if (isPinned) {
+      btn.className = "flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-[#fad2cf] bg-[#fce8e6] text-xs font-medium text-[#c5221f] active:scale-95 google-card-shadow flex-shrink-0 transition-colors cursor-pointer";
+      label.innerText = "Fijado en mapa";
+    } else {
+      btn.className = "flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-[#dadce0] bg-white text-xs font-medium text-[#3c4043] hover:bg-[#f8f9fa] active:scale-95 google-card-shadow flex-shrink-0 transition-colors cursor-pointer";
+      label.innerText = "Fijar pin";
     }
   }
 
@@ -1458,7 +1661,9 @@ import * as fb from './firebase-service.js';
 
       // 4. Filtro de Estado de Visita
       let matchesStatus = true;
-      if (currentStatusFilter === 'pending') {
+      if (currentStatusFilter === 'pinned') {
+        matchesStatus = isPlacePinned(p.id);
+      } else if (currentStatusFilter === 'pending') {
         matchesStatus = p.visitStatus === 'pending';
       } else if (currentStatusFilter === 'interested') {
         matchesStatus = p.visitStatus === 'interested';
@@ -1525,19 +1730,28 @@ import * as fb from './firebase-service.js';
       const statusBadge = getStatusBadgeHTML(place.visitStatus);
       const isOpportunity = (!place.website) || (place.reviewCount < 20);
       const isSelected = selectedPlace && selectedPlace.id === place.id;
-      const activeStyle = isSelected ? 'bg-[#e8f0fe]/70 border-l-4 border-l-[#1a73e8]' : 'hover:bg-[#f8f9fa] active:bg-[#f1f3f4]';
-      const placeIcon = getPlaceCategoryIcon(place);
+      const isPinned = isPlacePinned(place.id);
+      const activeStyle = isSelected ? 'bg-[#e8f0fe]/70 border-l-4 border-l-[#1a73e8]' : (isPinned ? 'bg-amber-50/40 hover:bg-amber-50/70' : 'hover:bg-[#f8f9fa] active:bg-[#f1f3f4]');
+      const placeIcon = isPinned ? '📌' : getPlaceCategoryIcon(place);
 
       return `
         <div onclick="window.selectPlaceFromList('${place.id}')" 
              class="p-3 border-b border-[#f1f3f4] ${activeStyle} cursor-pointer transition-colors flex items-start gap-3">
-          <div class="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-white shadow-xs mt-0.5 text-base" style="background-color: ${isSelected ? '#ffffff' : color}; ${isSelected ? 'border: 2px solid #1a73e8;' : ''}">
-            ${isSelected ? placeIcon : (CATEGORY_ICONS_SVG[place.categoryType] || CATEGORY_ICONS_SVG.general)}
+          <div class="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-white shadow-xs mt-0.5 text-base" style="background-color: ${isSelected || isPinned ? '#ffffff' : color}; ${isSelected || isPinned ? 'border: 2px solid ' + (isPinned ? '#d93025' : '#1a73e8') + ';' : ''}">
+            ${isPinned ? '📌' : (isSelected ? placeIcon : (CATEGORY_ICONS_SVG[place.categoryType] || CATEGORY_ICONS_SVG.general))}
           </div>
           <div class="flex-1 min-w-0">
             <div class="flex items-center justify-between gap-1">
               <h4 class="font-medium text-[#202124] text-[13px] truncate leading-snug">${place.name}</h4>
-              ${statusBadge}
+              <div class="flex items-center gap-1.5 flex-shrink-0">
+                <button type="button" 
+                        onclick="event.stopPropagation(); window.togglePinPlace('${place.id}')"
+                        title="${isPinned ? 'Desfijar pin del mapa' : 'Fijar pin en el mapa'}"
+                        class="w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-90 ${isPinned ? 'bg-[#fce8e6] text-[#c5221f] border border-[#fad2cf] shadow-2xs' : 'text-[#70757a] hover:text-[#202124] hover:bg-[#f1f3f4]'}">
+                  <span class="text-xs ${isPinned ? 'scale-110' : 'opacity-40 grayscale'}">📌</span>
+                </button>
+                ${statusBadge}
+              </div>
             </div>
             <p class="text-[11px] text-[#5f6368] truncate mt-0.5">${place.address}</p>
             <div class="flex items-center gap-2 mt-1.5 text-[11px]">
@@ -2164,6 +2378,7 @@ import * as fb from './firebase-service.js';
     }
 
     renderOpportunityAudit(place);
+    updateDrawerPinButton(place.id);
 
     // Seleccionar píldora de estado activa
     window.setVisitStatus(place.visitStatus || 'pending');
