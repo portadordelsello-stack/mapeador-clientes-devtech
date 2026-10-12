@@ -18,9 +18,23 @@ import * as fb from './firebase-service.js';
   let googleMapInstance = null;
   let userLocationMarker = null;
 
+  // Paleta oficial de colores seleccionables para las listas de prospectos
+  const LIST_COLOR_PRESETS = [
+    { id: 'orange', name: 'Naranja (Predeterminado)', hex: '#ea580c' },
+    { id: 'blue', name: 'Azul', hex: '#1a73e8' },
+    { id: 'green', name: 'Verde', hex: '#188038' },
+    { id: 'red', name: 'Rojo', hex: '#d93025' },
+    { id: 'purple', name: 'Violeta', hex: '#9334e6' },
+    { id: 'yellow', name: 'Amarillo', hex: '#f9ab00' },
+    { id: 'teal', name: 'Turquesa', hex: '#007b83' },
+    { id: 'pink', name: 'Rosa', hex: '#e52592' }
+  ];
+
   // Almacenamiento y estado de pines fijos en el mapa
   const PINNED_STORAGE_KEY = 'geoprospector_pinned_ids_v1';
+  const PINNED_COLORS_STORAGE_KEY = 'geoprospector_pinned_colors_v1';
   let pinnedPlaceIds = new Set();
+  let pinnedPlaceColors = {}; // placeId -> hex color
 
   function loadPinnedPlaces() {
     try {
@@ -29,17 +43,41 @@ import * as fb from './firebase-service.js';
         const arr = JSON.parse(raw);
         if (Array.isArray(arr)) pinnedPlaceIds = new Set(arr);
       }
+      const rawColors = localStorage.getItem(PINNED_COLORS_STORAGE_KEY);
+      if (rawColors) {
+        pinnedPlaceColors = JSON.parse(rawColors) || {};
+      }
     } catch (e) {}
   }
 
   function savePinnedPlaces() {
     try {
       localStorage.setItem(PINNED_STORAGE_KEY, JSON.stringify(Array.from(pinnedPlaceIds)));
+      localStorage.setItem(PINNED_COLORS_STORAGE_KEY, JSON.stringify(pinnedPlaceColors));
     } catch (e) {}
   }
 
   function isPlacePinned(placeId) {
     return Boolean(placeId && pinnedPlaceIds.has(placeId));
+  }
+
+  // Obtiene el color correspondiente a un local según la lista o color naranja por defecto
+  function getPlaceListColor(placeId) {
+    if (activeSavedSearchId) {
+      const activeSearch = savedSearches.find(s => s.id === activeSavedSearchId);
+      if (activeSearch && activeSearch.color) {
+        return activeSearch.color;
+      }
+    }
+    if (pinnedPlaceColors[placeId]) {
+      return pinnedPlaceColors[placeId];
+    }
+    for (const s of savedSearches) {
+      if (s.color && (s.places?.some(p => p.id === placeId) || s.placeIds?.includes(placeId))) {
+        return s.color;
+      }
+    }
+    return '#ea580c'; // Naranja por default
   }
 
   loadPinnedPlaces();
@@ -889,14 +927,15 @@ import * as fb from './firebase-service.js';
         const color = CATEGORY_COLORS[place.categoryType] || CATEGORY_COLORS.general;
         const isSelected = selectedPlace && selectedPlace.id === place.id;
         const isPinned = isPlacePinned(place.id);
-        const glyphIcon = isPinned ? '📌' : getPlaceCategoryIcon(place);
+        const pinColor = isPinned ? getPlaceListColor(place.id) : color;
+        const glyphIcon = getPlaceCategoryIcon(place);
 
         let pin;
         if (isSelected && isPinned) {
           pin = new PinElement({
             background: '#ffffff',
-            borderColor: '#d93025',
-            glyph: '📌',
+            borderColor: pinColor,
+            glyphColor: pinColor,
             scale: 1.4
           });
         } else if (isSelected) {
@@ -907,10 +946,11 @@ import * as fb from './firebase-service.js';
             scale: 1.35
           });
         } else if (isPinned) {
+          // Marcador de lista con color propio (Naranja por default o color de lista elegida)
           pin = new PinElement({
-            background: '#ffffff',
-            borderColor: '#d93025',
-            glyph: '📌',
+            background: pinColor,
+            borderColor: '#ffffff',
+            glyphColor: '#ffffff',
             scale: 1.25
           });
         } else {
@@ -925,7 +965,7 @@ import * as fb from './firebase-service.js';
         const marker = new AdvancedMarkerElement({
           position: { lat: place.lat, lng: place.lng },
           map: googleMapInstance,
-          title: place.name + (isPinned ? ' 📌 (Fijado)' : ''),
+          title: place.name + (isPinned ? ' (En Lista)' : ''),
           content: pin.element || pin,
           zIndex: isSelected ? 9999 : (isPinned ? 500 : 1)
         });
@@ -945,18 +985,25 @@ import * as fb from './firebase-service.js';
       placesToRender.forEach(place => {
         const isSelected = selectedPlace && selectedPlace.id === place.id;
         const isPinned = isPlacePinned(place.id);
-        const glyphIcon = isPinned ? '📌' : getPlaceCategoryIcon(place);
-        const stroke = isPinned ? '#d93025' : '#1a73e8';
+        const pinColor = isPinned ? getPlaceListColor(place.id) : (CATEGORY_COLORS[place.categoryType] || CATEGORY_COLORS.general);
+        const glyphIcon = getPlaceCategoryIcon(place);
 
         const marker = new google.maps.Marker({
           position: { lat: place.lat, lng: place.lng },
           map: googleMapInstance,
-          title: place.name + (isPinned ? ' 📌' : ''),
+          title: place.name + (isPinned ? ' (En Lista)' : ''),
           zIndex: isSelected ? 9999 : (isPinned ? 500 : 1)
         });
 
-        if (isSelected || isPinned) {
-          const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48"><path fill="#ffffff" stroke="${stroke}" stroke-width="2" d="M18 1 C9 1 1 9 1 18 C1 28 18 47 18 47 C18 47 35 28 35 18 C35 9 27 1 18 1 Z"/><text x="18" y="22" font-size="16" text-anchor="middle" dominant-baseline="central">${glyphIcon}</text></svg>`;
+        if (isSelected && !isPinned) {
+          const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48"><path fill="#ffffff" stroke="#1a73e8" stroke-width="2" d="M18 1 C9 1 1 9 1 18 C1 28 18 47 18 47 C18 47 35 28 35 18 C35 9 27 1 18 1 Z"/><text x="18" y="22" font-size="16" text-anchor="middle" dominant-baseline="central">${glyphIcon}</text></svg>`;
+          marker.setIcon({
+            url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+            scaledSize: new google.maps.Size(36, 48)
+          });
+        } else if (isPinned) {
+          const stroke = isSelected ? '#1a73e8' : '#ffffff';
+          const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48"><path fill="${pinColor}" stroke="${stroke}" stroke-width="2" d="M18 1 C9 1 1 9 1 18 C1 28 18 47 18 47 C18 47 35 28 35 18 C35 9 27 1 18 1 Z"/><circle cx="18" cy="18" r="6" fill="#ffffff"/></svg>`;
           marker.setIcon({
             url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
             scaledSize: new google.maps.Size(36, 48)
@@ -973,7 +1020,7 @@ import * as fb from './firebase-service.js';
     }
   }
 
-  // Actualiza dinámicamente el marcador seleccionado para que sea blanco con icono del rubro o pin
+  // Actualiza dinámicamente el marcador seleccionado para que resalte
   async function updateSelectedMarkerHighlight(selectedPlaceId) {
     if (!googleMapInstance) return;
 
@@ -987,23 +1034,20 @@ import * as fb from './firebase-service.js';
         if (prevPlace) {
           const isPrevPinned = isPlacePinned(prevPlace.id);
           const defaultColor = prevMarker._defaultColor || CATEGORY_COLORS[prevPlace.categoryType] || CATEGORY_COLORS.general;
+          const prevPinColor = isPrevPinned ? getPlaceListColor(prevPlace.id) : defaultColor;
+
           if (PinElement && prevMarker.content !== undefined) {
-            const restoredPin = isPrevPinned ? new PinElement({
-              background: '#ffffff',
-              borderColor: '#d93025',
-              glyph: '📌',
-              scale: 1.25
-            }) : new PinElement({
-              background: defaultColor,
+            const restoredPin = new PinElement({
+              background: prevPinColor,
               borderColor: '#ffffff',
               glyphColor: '#ffffff',
-              scale: 1.05
+              scale: isPrevPinned ? 1.25 : 1.05
             });
             prevMarker.content = restoredPin.element || restoredPin;
             prevMarker.zIndex = isPrevPinned ? 500 : 1;
           } else if (prevMarker.setIcon) {
             if (isPrevPinned) {
-              const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48"><path fill="#ffffff" stroke="#d93025" stroke-width="2" d="M18 1 C9 1 1 9 1 18 C1 28 18 47 18 47 C18 47 35 28 35 18 C35 9 27 1 18 1 Z"/><text x="18" y="22" font-size="16" text-anchor="middle" dominant-baseline="central">📌</text></svg>`;
+              const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48"><path fill="${prevPinColor}" stroke="#ffffff" stroke-width="2" d="M18 1 C9 1 1 9 1 18 C1 28 18 47 18 47 C18 47 35 28 35 18 C35 9 27 1 18 1 Z"/><circle cx="18" cy="18" r="6" fill="#ffffff"/></svg>`;
               prevMarker.setIcon({
                 url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
                 scaledSize: new google.maps.Size(36, 48)
@@ -1027,25 +1071,45 @@ import * as fb from './firebase-service.js';
       const targetMarker = markers[selectedPlaceId];
       const targetPlace = targetMarker._placeData || places.find(p => p.id === selectedPlaceId);
       const isTargetPinned = isPlacePinned(selectedPlaceId);
-      const glyphIcon = isTargetPinned ? '📌' : getPlaceCategoryIcon(targetPlace);
-      const borderColor = isTargetPinned ? '#d93025' : '#1a73e8';
       activeSelectedMarkerId = selectedPlaceId;
 
       if (PinElement && targetMarker.content !== undefined) {
-        const selectedPin = new PinElement({
-          background: '#ffffff',
-          borderColor: borderColor,
-          glyph: glyphIcon,
-          scale: 1.35
-        });
+        let selectedPin;
+        if (isTargetPinned) {
+          const targetPinColor = getPlaceListColor(selectedPlaceId);
+          selectedPin = new PinElement({
+            background: '#ffffff',
+            borderColor: targetPinColor,
+            glyphColor: targetPinColor,
+            scale: 1.4
+          });
+        } else {
+          const glyphIcon = getPlaceCategoryIcon(targetPlace);
+          selectedPin = new PinElement({
+            background: '#ffffff',
+            borderColor: '#1a73e8',
+            glyph: glyphIcon,
+            scale: 1.35
+          });
+        }
         targetMarker.content = selectedPin.element || selectedPin;
         targetMarker.zIndex = 9999;
       } else if (targetMarker.setIcon) {
-        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48"><path fill="#ffffff" stroke="${borderColor}" stroke-width="2" d="M18 1 C9 1 1 9 1 18 C1 28 18 47 18 47 C18 47 35 28 35 18 C35 9 27 1 18 1 Z"/><text x="18" y="22" font-size="16" text-anchor="middle" dominant-baseline="central">${glyphIcon}</text></svg>`;
-        targetMarker.setIcon({
-          url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
-          scaledSize: new google.maps.Size(36, 48)
-        });
+        if (isTargetPinned) {
+          const targetPinColor = getPlaceListColor(selectedPlaceId);
+          const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48"><path fill="${targetPinColor}" stroke="#1a73e8" stroke-width="3" d="M18 1 C9 1 1 9 1 18 C1 28 18 47 18 47 C18 47 35 28 35 18 C35 9 27 1 18 1 Z"/><circle cx="18" cy="18" r="6" fill="#ffffff"/></svg>`;
+          targetMarker.setIcon({
+            url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+            scaledSize: new google.maps.Size(36, 48)
+          });
+        } else {
+          const glyphIcon = getPlaceCategoryIcon(targetPlace);
+          const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48"><path fill="#ffffff" stroke="#1a73e8" stroke-width="2" d="M18 1 C9 1 1 9 1 18 C1 28 18 47 18 47 C18 47 35 28 35 18 C35 9 27 1 18 1 Z"/><text x="18" y="22" font-size="16" text-anchor="middle" dominant-baseline="central">${glyphIcon}</text></svg>`;
+          targetMarker.setIcon({
+            url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+            scaledSize: new google.maps.Size(36, 48)
+          });
+        }
         targetMarker.setZIndex(9999);
       }
     } catch (err) {
@@ -1062,7 +1126,7 @@ import * as fb from './firebase-service.js';
     const isPinned = isPlacePinned(placeId);
     const isSelected = selectedPlace && selectedPlace.id === placeId;
     const color = CATEGORY_COLORS[place.categoryType] || CATEGORY_COLORS.general;
-    const glyphIcon = isPinned ? '📌' : getPlaceCategoryIcon(place);
+    const pinColor = isPinned ? getPlaceListColor(placeId) : color;
 
     try {
       const { PinElement, AdvancedMarkerElement } = await getGoogleMapsLibrary("marker");
@@ -1071,15 +1135,15 @@ import * as fb from './firebase-service.js';
       // Si el local fue fijado pero no tenía marcador en pantalla, crearlo
       if (!marker && isPinned && AdvancedMarkerElement && PinElement) {
         const pin = new PinElement({
-          background: '#ffffff',
-          borderColor: '#d93025',
-          glyph: '📌',
+          background: pinColor,
+          borderColor: '#ffffff',
+          glyphColor: '#ffffff',
           scale: 1.25
         });
         marker = new AdvancedMarkerElement({
           position: { lat: place.lat, lng: place.lng },
           map: googleMapInstance,
-          title: place.name + ' 📌 (Fijado)',
+          title: place.name + ' (En Lista)',
           content: pin.element || pin,
           zIndex: 500
         });
@@ -1098,16 +1162,16 @@ import * as fb from './firebase-service.js';
           if (isSelected) {
             pin = new PinElement({
               background: '#ffffff',
-              borderColor: isPinned ? '#d93025' : '#1a73e8',
-              glyph: glyphIcon,
-              scale: 1.35
+              borderColor: isPinned ? pinColor : '#1a73e8',
+              glyphColor: isPinned ? pinColor : '#1a73e8',
+              scale: 1.4
             });
             marker.zIndex = 9999;
           } else if (isPinned) {
             pin = new PinElement({
-              background: '#ffffff',
-              borderColor: '#d93025',
-              glyph: '📌',
+              background: pinColor,
+              borderColor: '#ffffff',
+              glyphColor: '#ffffff',
               scale: 1.25
             });
             marker.zIndex = 500;
@@ -1122,14 +1186,14 @@ import * as fb from './firebase-service.js';
           }
           marker.content = pin.element || pin;
         } else if (marker.setIcon) {
-          if (isPinned || isSelected) {
-            const stroke = isPinned ? '#d93025' : '#1a73e8';
-            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48"><path fill="#ffffff" stroke="${stroke}" stroke-width="2" d="M18 1 C9 1 1 9 1 18 C1 28 18 47 18 47 C18 47 35 28 35 18 C35 9 27 1 18 1 Z"/><text x="18" y="22" font-size="16" text-anchor="middle" dominant-baseline="central">${glyphIcon}</text></svg>`;
+          if (isPinned) {
+            const stroke = isSelected ? '#1a73e8' : '#ffffff';
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48"><path fill="${pinColor}" stroke="${stroke}" stroke-width="2" d="M18 1 C9 1 1 9 1 18 C1 28 18 47 18 47 C18 47 35 28 35 18 C35 9 27 1 18 1 Z"/><circle cx="18" cy="18" r="6" fill="#ffffff"/></svg>`;
             marker.setIcon({
               url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
               scaledSize: new google.maps.Size(36, 48)
             });
-            marker.setZIndex(isSelected ? 9999 : (isPinned ? 500 : 1));
+            marker.setZIndex(isSelected ? 9999 : 500);
           } else {
             marker.setIcon(null);
             marker.setZIndex(1);
@@ -1180,12 +1244,19 @@ import * as fb from './firebase-service.js';
     if (!btn || !label) return;
 
     const isPinned = isPlacePinned(placeId);
+    const color = getPlaceListColor(placeId);
     if (isPinned) {
-      btn.className = "flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-[#fad2cf] bg-[#fce8e6] text-xs font-medium text-[#c5221f] active:scale-95 google-card-shadow flex-shrink-0 transition-colors cursor-pointer";
-      label.innerText = "Fijado en mapa";
+      btn.className = "flex items-center gap-1.5 px-3.5 py-2 rounded-full border text-xs font-semibold active:scale-95 google-card-shadow flex-shrink-0 transition-all cursor-pointer";
+      btn.style.borderColor = color;
+      btn.style.backgroundColor = color + '15'; // 10% opacity tint
+      btn.style.color = color;
+      label.innerHTML = `<span class="inline-block w-2.5 h-2.5 rounded-full mr-1" style="background-color: ${color}"></span>Marcado en mapa`;
     } else {
       btn.className = "flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-[#dadce0] bg-white text-xs font-medium text-[#3c4043] hover:bg-[#f8f9fa] active:scale-95 google-card-shadow flex-shrink-0 transition-colors cursor-pointer";
-      label.innerText = "Fijar pin";
+      btn.style.borderColor = '';
+      btn.style.backgroundColor = '';
+      btn.style.color = '';
+      label.innerHTML = `<span>Marcar en mapa</span>`;
     }
   }
 
@@ -1731,14 +1802,15 @@ import * as fb from './firebase-service.js';
       const isOpportunity = (!place.website) || (place.reviewCount < 20);
       const isSelected = selectedPlace && selectedPlace.id === place.id;
       const isPinned = isPlacePinned(place.id);
+      const listPinColor = isPinned ? getPlaceListColor(place.id) : '#1a73e8';
       const activeStyle = isSelected ? 'bg-[#e8f0fe]/70 border-l-4 border-l-[#1a73e8]' : (isPinned ? 'bg-amber-50/40 hover:bg-amber-50/70' : 'hover:bg-[#f8f9fa] active:bg-[#f1f3f4]');
-      const placeIcon = isPinned ? '📌' : getPlaceCategoryIcon(place);
+      const placeIcon = getPlaceCategoryIcon(place);
 
       return `
         <div onclick="window.selectPlaceFromList('${place.id}')" 
              class="p-3 border-b border-[#f1f3f4] ${activeStyle} cursor-pointer transition-colors flex items-start gap-3">
-          <div class="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-white shadow-xs mt-0.5 text-base" style="background-color: ${isSelected || isPinned ? '#ffffff' : color}; ${isSelected || isPinned ? 'border: 2px solid ' + (isPinned ? '#d93025' : '#1a73e8') + ';' : ''}">
-            ${isPinned ? '📌' : (isSelected ? placeIcon : (CATEGORY_ICONS_SVG[place.categoryType] || CATEGORY_ICONS_SVG.general))}
+          <div class="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-white shadow-xs mt-0.5 text-base" style="background-color: ${isSelected || isPinned ? '#ffffff' : color}; ${isSelected || isPinned ? 'border: 2px solid ' + listPinColor + ';' : ''}">
+            ${isSelected || isPinned ? `<span style="color: ${listPinColor}; font-size: 14px;">●</span>` : (CATEGORY_ICONS_SVG[place.categoryType] || CATEGORY_ICONS_SVG.general)}
           </div>
           <div class="flex-1 min-w-0">
             <div class="flex items-center justify-between gap-1">
@@ -1746,9 +1818,10 @@ import * as fb from './firebase-service.js';
               <div class="flex items-center gap-1.5 flex-shrink-0">
                 <button type="button" 
                         onclick="event.stopPropagation(); window.togglePinPlace('${place.id}')"
-                        title="${isPinned ? 'Desfijar pin del mapa' : 'Fijar pin en el mapa'}"
-                        class="w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-90 ${isPinned ? 'bg-[#fce8e6] text-[#c5221f] border border-[#fad2cf] shadow-2xs' : 'text-[#70757a] hover:text-[#202124] hover:bg-[#f1f3f4]'}">
-                  <span class="text-xs ${isPinned ? 'scale-110' : 'opacity-40 grayscale'}">📌</span>
+                        title="${isPinned ? 'Quitar de la lista' : 'Agregar a la lista'}"
+                        style="${isPinned ? `background-color: ${listPinColor}18; border-color: ${listPinColor}; color: ${listPinColor};` : ''}"
+                        class="w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-90 ${isPinned ? 'border shadow-2xs font-bold' : 'text-[#70757a] hover:text-[#202124] hover:bg-[#f1f3f4]'}">
+                  <span class="w-2.5 h-2.5 rounded-full ${isPinned ? '' : 'bg-slate-300'}" style="${isPinned ? `background-color: ${listPinColor}` : ''}"></span>
                 </button>
                 ${statusBadge}
               </div>
@@ -1923,6 +1996,68 @@ import * as fb from './firebase-service.js';
 
     dialog.classList.remove('hidden');
     nameInput.focus();
+    renderSaveListColorSwatches();
+  };
+
+  function renderSaveListColorSwatches() {
+    const container = document.getElementById('save-list-color-swatches');
+    const hiddenInput = document.getElementById('save-list-selected-color');
+    if (!container || !hiddenInput) return;
+
+    const currentColor = hiddenInput.value || '#ea580c';
+    container.innerHTML = LIST_COLOR_PRESETS.map(preset => {
+      const isSelected = preset.hex.toLowerCase() === currentColor.toLowerCase();
+      return `
+        <button type="button" 
+                onclick="window.selectSaveListColor('${preset.hex}')"
+                title="${preset.name}"
+                class="w-7 h-7 rounded-full transition-transform flex items-center justify-center cursor-pointer ${isSelected ? 'ring-2 ring-offset-2 ring-slate-800 scale-110 shadow-sm' : 'hover:scale-105 opacity-90'}"
+                style="background-color: ${preset.hex}">
+          ${isSelected ? '<span class="text-white text-xs font-bold leading-none">✓</span>' : ''}
+        </button>
+      `;
+    }).join('');
+  }
+
+  window.selectSaveListColor = function(colorHex) {
+    const hiddenInput = document.getElementById('save-list-selected-color');
+    if (hiddenInput) {
+      hiddenInput.value = colorHex;
+    }
+    renderSaveListColorSwatches();
+  };
+
+  // Permite cambiar el color de una lista guardada directamente y actualiza el mapa
+  window.changeSavedListColor = async function(searchId, newColorHex) {
+    const search = savedSearches.find(s => s.id === searchId);
+    if (!search) return;
+
+    search.color = newColorHex;
+
+    // Actualizar colores asociados a los locales de esta lista
+    const placeIds = search.placeIds || (search.places ? search.places.map(p => p.id) : []);
+    placeIds.forEach(id => {
+      pinnedPlaceColors[id] = newColorHex;
+    });
+    savePinnedPlaces();
+    saveStoredLocalSearches(savedSearches);
+
+    if (currentUser) {
+      try {
+        await fb.saveUserSearch(currentUser.uid, search);
+      } catch (e) {
+        console.warn("Error guardando color en Firebase:", e);
+      }
+    }
+
+    renderSavedSearchesList();
+    await renderCurrentMapMarkers();
+    renderPlacesList();
+    if (selectedPlace) {
+      updateDrawerPinButton(selectedPlace.id);
+    }
+
+    showAppToast(`🎨 Color de "${search.name}" actualizado`, 'info');
   };
 
   window.closeSaveSearchDialog = function() {
@@ -1931,6 +2066,8 @@ import * as fb from './firebase-service.js';
 
   window.confirmSaveSearch = async function() {
     const nameInput = document.getElementById('save-search-name-input');
+    const colorInput = document.getElementById('save-list-selected-color');
+    const selectedColor = (colorInput && colorInput.value) || '#ea580c';
     const name = (nameInput.value || '').trim();
     if (!name) {
       alert("Por favor ingresa un nombre para la lista.");
@@ -1943,9 +2080,16 @@ import * as fb from './firebase-service.js';
     const placesToSave = isPinnedSaving ? pinnedList : getFilteredPlaces();
     const placeIds = placesToSave.map(p => p.id);
 
+    // Asignar el color seleccionado a cada local guardado
+    placeIds.forEach(id => {
+      pinnedPlaceColors[id] = selectedColor;
+    });
+    savePinnedPlaces();
+
     const newSearch = {
       id: `search_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
       name: name,
+      color: selectedColor,
       query: isPinnedSaving ? 'Pines Fijados' : (activeSearchQuery || currentFilter),
       category: currentFilter,
       placeIds: placeIds,
@@ -1968,9 +2112,11 @@ import * as fb from './firebase-service.js';
     updateSavedSearchesBadge();
     window.closeSaveSearchDialog();
 
+    await renderCurrentMapMarkers();
+    renderPlacesList();
+
     const pinMsg = isPinnedSaving ? ` con los ${placesToSave.length} locales pineados` : '';
-    showAppToast(`🎉 ¡Lista "${name}" guardada${pinMsg}!`, 'success');
-    alert(`🎉 ¡Lista "${name}" guardada con éxito en "Mis Listas"${pinMsg}! Puedes acceder a ella en cualquier momento.`);
+    showAppToast(`🎉 ¡Lista "${name}" guardada con color${pinMsg}!`, 'success');
   };
 
   window.openSavedSearchesModal = function() {
@@ -1991,32 +2137,55 @@ import * as fb from './firebase-service.js';
         <div class="p-8 text-center text-slate-400 space-y-2">
           <div class="text-3xl">📁</div>
           <p class="font-semibold text-slate-600">No tienes listas guardadas aún.</p>
-          <p class="text-[11px] text-slate-400 max-w-xs mx-auto">Realiza una búsqueda (ej: "supermercados", "telas", "talleres") y pulsa "Guardar Lista" para tener acceso rápido.</p>
+          <p class="text-[11px] text-slate-400 max-w-xs mx-auto">Marca prospectos con el botón de lista o realiza una búsqueda y pulsa "+ Guardar lista actual" para tenerla organizada.</p>
         </div>
       `;
       return;
     }
 
     container.innerHTML = savedSearches.map(item => {
+      const listColor = item.color || '#ea580c';
       const dateStr = new Date(item.createdAt || Date.now()).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+      // Selector de color para cada tarjeta de lista armada
+      const colorSwatchesHtml = LIST_COLOR_PRESETS.map(preset => {
+        const isCurrent = preset.hex.toLowerCase() === listColor.toLowerCase();
+        return `
+          <button type="button" 
+                  onclick="window.changeSavedListColor('${item.id}', '${preset.hex}')"
+                  title="Cambiar color a ${preset.name}"
+                  class="w-4 h-4 rounded-full transition-transform cursor-pointer ${isCurrent ? 'ring-2 ring-offset-1 ring-slate-800 scale-125 shadow-xs' : 'opacity-70 hover:opacity-100 hover:scale-110'}"
+                  style="background-color: ${preset.hex}">
+          </button>
+        `;
+      }).join('');
+
       return `
-        <div class="p-3.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl transition-all flex flex-col gap-2">
+        <div class="p-3.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl transition-all flex flex-col gap-2.5">
           <div class="flex items-center justify-between gap-2">
-            <div class="flex items-center gap-2 min-w-0">
-              <span class="w-7 h-7 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-xs flex-shrink-0">
-                ⭐
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 shadow-xs" style="background-color: ${listColor}; color: #ffffff;">
+                ●
               </span>
               <div class="truncate">
                 <h4 class="font-bold text-slate-900 text-xs truncate">${item.name}</h4>
                 <p class="text-[10px] text-slate-500 truncate">Creada: ${dateStr}</p>
               </div>
             </div>
-            <span class="px-2 py-0.5 bg-blue-100 text-blue-800 text-[10px] font-bold rounded-full flex-shrink-0">
+            <span class="px-2 py-0.5 text-[10px] font-bold rounded-full flex-shrink-0" style="background-color: ${listColor}20; color: ${listColor}; border: 1px solid ${listColor}40;">
               ${item.placesCount || (item.placeIds ? item.placeIds.length : 0)} locales
             </span>
           </div>
 
-          <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-200/60 text-xs">
+          <!-- Selector de color para cambiar pines de la lista armada -->
+          <div class="flex items-center justify-between gap-2 px-2.5 py-1.5 bg-white rounded-xl border border-slate-200/80 text-[11px]">
+            <span class="text-slate-600 font-medium text-[10px]">Color en mapa:</span>
+            <div class="flex items-center gap-1.5 flex-wrap">
+              ${colorSwatchesHtml}
+            </div>
+          </div>
+
+          <div class="flex items-center justify-end gap-2 pt-1 border-t border-slate-200/60 text-xs">
             <button onclick="window.deleteSavedSearchItem('${item.id}')" class="text-rose-600 hover:text-rose-700 font-semibold px-2 py-1 rounded-lg active:bg-rose-50 text-[11px]">
               Eliminar
             </button>
@@ -2027,7 +2196,7 @@ import * as fb from './firebase-service.js';
               <svg class="w-3.5 h-3.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
               <span>Compartir</span>
             </button>
-            <button onclick="window.applySavedSearchFilter('${item.id}')" class="bg-blue-600 active:bg-blue-700 hover:bg-blue-700 text-white font-bold px-3 py-1 rounded-lg shadow-2xs text-[11px]">
+            <button onclick="window.applySavedSearchFilter('${item.id}')" class="text-white font-bold px-3 py-1 rounded-lg shadow-2xs text-[11px] transition-opacity hover:opacity-90 active:scale-95 cursor-pointer" style="background-color: ${listColor};">
               Ver en Mapa &rarr;
             </button>
           </div>
