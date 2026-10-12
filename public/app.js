@@ -2093,6 +2093,12 @@ import * as fb from './firebase-service.js';
       expandDrawer();
     }
 
+    // Ocultar FAB GPS en mobile mientras el drawer está abierto
+    const fabGps = document.getElementById('btn-fab-gps');
+    if (fabGps && window.innerWidth < 768) {
+      fabGps.classList.add('hidden');
+    }
+
     document.getElementById('drawer-title').innerText = place.name;
     document.getElementById('drawer-category').innerText = place.category;
     document.getElementById('drawer-address-text').innerText = place.address;
@@ -2158,13 +2164,13 @@ import * as fb from './firebase-service.js';
     document.getElementById('visit-notes').value = place.notes || '';
   }
 
-  // Alternar entre modo Peek y Expandido al tocar la cabecera
+  // Al tocar la cabecera en modo expanded → cerrar directamente (más intuitivo en mobile)
   window.handleDrawerHeaderClick = function() {
     if (window.innerWidth >= 768) return;
     if (drawerMode === 'peek') {
       expandDrawer();
     } else if (drawerMode === 'expanded') {
-      collapseDrawerToPeek();
+      window.closePlaceDrawer();
     }
   };
 
@@ -2297,6 +2303,10 @@ import * as fb from './firebase-service.js';
         }
       }, 250);
     }
+    // Restaurar FAB GPS al cerrar el drawer en mobile
+    const fabGps = document.getElementById('btn-fab-gps');
+    if (fabGps) fabGps.classList.remove('hidden');
+
     drawerMode = 'closed';
     selectedPlace = null;
     updateSelectedMarkerHighlight(null);
@@ -2427,6 +2437,17 @@ import * as fb from './firebase-service.js';
 
     const navSaved = document.getElementById('nav-saved-count');
     if (navSaved) navSaved.innerText = savedSearches.length;
+
+    // Actualizar banner mobile de la vista lista (Fix 7)
+    const mobileQueryLabel = document.getElementById('mobile-list-query-label');
+    const mobileCountLabel = document.getElementById('mobile-list-count-label');
+    if (mobileQueryLabel) {
+      const queryText = activeSearchQuery ? `"${activeSearchQuery}"` : (activeSavedSearchName ? activeSavedSearchName : 'Resultados');
+      mobileQueryLabel.innerText = queryText;
+    }
+    if (mobileCountLabel) {
+      mobileCountLabel.innerText = `${total} locales`;
+    }
   }
 
   // ==========================================
